@@ -28,7 +28,7 @@ const CompanionsList = ({ title, companions, classNames }: CompanionsListProps) 
         </div>
         <div>
           <h2 className="font-bold text-3xl bg-gradient-to-r from-gray-900 to-gray-600 dark:from-gray-100 dark:to-gray-400 bg-clip-text text-transparent">
-            Recent Sessions
+            {title}
           </h2>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             Continue your learning journey
