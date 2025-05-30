@@ -53,9 +53,9 @@ const CompanionsList = ({ title, companions, classNames }: CompanionsListProps) 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {companions?.map(({ id, subject, name, topic, duration }) => (
+            {companions?.map(({ id, subject, name, topic, duration }, index) => (
               <TableRow 
-                key={id} 
+                key={`${id}-${index}`} 
                 className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 border-b border-gray-100 dark:border-gray-700 last:border-b-0"
               >
                 <TableCell className="py-6">
@@ -97,7 +97,7 @@ const CompanionsList = ({ title, companions, classNames }: CompanionsListProps) 
                   {/* Enhanced Desktop Subject Badge */}
                   <div className="max-md:hidden">
                     <span 
-                      className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-white shadow-md"
+                      className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium text-gray shadow-md"
                       style={{ backgroundColor: getSubjectColor(subject) }}
                     >
                       <Image 

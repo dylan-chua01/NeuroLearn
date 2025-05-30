@@ -97,3 +97,58 @@ export const getUserCompanions = async (userId: string) => {
 
   return data;
 }
+
+export const newCompanionPermissions = async () => {
+  const { userId, has } = await auth();
+  const supabase = createSupabaseClient();
+
+  let limit = 0;
+
+  if(has({ plan: 'pro' })) {
+    return true;
+  } else if(has({ feature: "3_companion_limit"})) {
+    limit = 3;
+  } else if(has({ feature: "10_companion_limit" })) {
+    limit = 10;
+  }
+
+  const { data, error } = await supabase
+    .from('companions')
+    .select('id', { count: 'exact' })
+    .eq('author', userId)
+
+    if(error) throw new Error(error.message);
+
+    const companionCount = data?.length;
+
+    if(companionCount >= limit) {
+      return false
+    } else {
+      return true;
+    }
+}
+
+export const deleteCompanion = async (id: string) => {
+  const { userId } = await auth();
+  const supabase = createSupabaseClient();
+
+  // First, check if the current user is the author of the companion
+  const { data: companion, error: getError } = await supabase
+    .from("companions")
+    .select("author")
+    .eq("id", id)
+    .single();
+
+  if (getError) throw new Error(getError.message);
+  if (!companion || companion.author !== userId)
+    throw new Error("You are not authorized to delete this companion");
+
+  const { error: deleteError } = await supabase
+    .from("companions")
+    .delete()
+    .eq("id", id);
+
+  if (deleteError) throw new Error(deleteError.message);
+
+  return true;
+};

@@ -38,9 +38,13 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
     useEffect(() => {
         const onCallStart = () => setCallStatus(CallStatus.ACTIVE);
 
-        const onCallEnd = () => {
+        const onCallEnd =async () => {
             setCallStatus(CallStatus.FINISHED);
-            addToSessionHistory(companionId)
+            try {
+                await addToSessionHistory(companionId)
+              } catch (err) {
+                console.error("Failed to save session:", err);
+              }
         }
 
         const onMessage = (message: Message) => {
@@ -96,6 +100,10 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
     const handleDisconnect = async () => {
         setCallStatus(CallStatus.FINISHED)
         vapi.stop()
+    }
+
+    const onError = (error: Error) => {
+        console.error('Vapi Error:', error);
     }
 
   return (
