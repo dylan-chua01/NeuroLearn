@@ -152,3 +152,27 @@ export const deleteCompanion = async (id: string) => {
 
   return true;
 };
+
+export const newActiveCompanionPermissions = async () => {
+  const { userId, has } = await auth();
+  const supabase = createSupabaseClient();
+
+  // If on Pro or Core, allow unlimited
+  if (has({ plan: 'pro' }) || has({ plan: 'core_learner' })) {
+    return true;
+  }
+
+  // For Basic, enforce 10 companions/month
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+  const { count, error } = await supabase
+    .from('companions')
+    .select('id', { count: 'exact' })
+    .eq('author', userId)
+    .gte('created_at', startOfMonth);
+
+  if (error) throw new Error(error.message);
+
+  return (count ?? 0) < 10;
+};

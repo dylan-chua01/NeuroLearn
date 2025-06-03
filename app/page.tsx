@@ -12,22 +12,7 @@ const Page = async () => {
 
   return (
     <main className="bg-gradient-to-br from-slate-50 to-emerald-50/30 min-h-screen">
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-700 text-white py-16 px-6 mb-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="relative">
-            <div className="absolute inset-0 bg-white/10 rounded-2xl blur-3xl"></div>
-            <div className="relative z-10 text-center">
-              <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-emerald-100 bg-clip-text text-transparent">
-                Discover Amazing Companions
-              </h1>
-              <p className="text-xl text-emerald-100 max-w-2xl mx-auto">
-                Connect with AI companions tailored to enhance your learning journey
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <div className="px-6 space-y-12">
         {/* Popular Companions Section */}
