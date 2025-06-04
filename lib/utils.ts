@@ -22,10 +22,39 @@ export const voices = {
   }
 }
 
+// Add this function to help debug
+export const debugVoiceConfig = () => {
+  console.log("🔍 Voice Configuration Debug:");
+  console.log("Current timestamp:", new Date().toISOString());
+  console.log("Available voices:", JSON.stringify(voices, null, 2));
+  console.log("User agent:", navigator.userAgent);
+  console.log("Current URL:", window.location.href);
+  
+  // Test all voice combinations
+  Object.entries(voices).forEach(([voiceType, styles]) => {
+    Object.entries(styles).forEach(([style, voiceId]) => {
+      console.log(`${voiceType}-${style}: ${voiceId}`);
+    });
+  });
+};
+
 export const configureAssistant = (voice: string, style: string) => {
-  // Better fallback handling
+  // Call debug function
+  debugVoiceConfig();
+  
+  console.log("🔧 configureAssistant called with:", { voice, style });
+  console.log("🔧 Build timestamp:", process.env.NEXT_PUBLIC_BUILD_TIME || "not set");
+  
   const voiceCategory = voices[voice as keyof typeof voices];
   const voiceId = voiceCategory?.[style as keyof typeof voiceCategory] || "oWAxZDx7w5VEj9dCyTzz";
+  
+  console.log("🔧 Selected voiceId:", voiceId);
+  
+  // Alert users if old voice ID somehow appears
+  if (voiceId.includes("ZIlrSGI4jZgobxRKprJz") || voiceId.includes("2BJW5covhAzSr8STdHbE")) {
+    console.error("❌ CRITICAL: Old voice ID detected!");
+    alert("Please clear your browser cache and refresh the page.");
+  }
 
   const vapiAssistant: CreateAssistantDTO = {
     name: "Companion",
@@ -62,5 +91,7 @@ export const configureAssistant = (voice: string, style: string) => {
       }]
     },
   };
+  
+  console.log("🔧 Final voice ID being sent:", vapiAssistant.voice.voiceId);
   return vapiAssistant;
 }
