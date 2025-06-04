@@ -3,9 +3,10 @@
 import { auth } from "@clerk/nextjs/server";
 import { createSupabaseClient } from "../supabase";
 
-
 export const createCompanion = async (formData: CreateCompanion) => {
-  const { userId: author } = await auth(); // no need for `await` here
+  const { userId: author } = await auth();
+  if (!author) throw new Error('User not authenticated');
+  
   const supabase = createSupabaseClient();
 
   const { data, error } = await supabase
@@ -19,9 +20,12 @@ export const createCompanion = async (formData: CreateCompanion) => {
 };
 
 export const getAllCompanions = async ({ limit = 10, page = 1, subject, topic }: GetAllCompanions) => {
+  const { userId } = await auth();
+  if (!userId) return []; // Return empty array if not authenticated
+  
   const supabase = createSupabaseClient();
 
-  let query = supabase.from('companions').select();
+  let query = supabase.from('companions').select().eq('author', userId); // Only get user's companions
 
   if(subject && topic) {
     query = query.ilike('subject', `%${subject}`).or(`topic.ilike.%${topic}%,name.ilike.%${topic}%`)
@@ -37,21 +41,33 @@ export const getAllCompanions = async ({ limit = 10, page = 1, subject, topic }:
 
   if(error) throw new Error(error.message);
 
-  return companions;
+  return companions || [];
 }
 
 export const getCompanion = async (id: string) => {
+  const { userId } = await auth();
+  if (!userId) return null;
+  
   const supabase = createSupabaseClient();
 
-  const { data, error } = await supabase.from('companions').select().eq('id', id);
+  const { data, error } = await supabase
+    .from('companions')
+    .select()
+    .eq('id', id)
+    .eq('author', userId); // Only get if user owns it
 
-  if(error) return console.log(error);
+  if(error) {
+    console.log(error);
+    return null;
+  }
 
-  return data[0];
+  return data?.[0] || null;
 }
 
 export const addToSessionHistory = async (companionId: string) => {
   const { userId } = await auth();
+  if (!userId) throw new Error('User not authenticated');
+  
   const supabase = createSupabaseClient();
   const { data, error } = await supabase.from('session_history').insert({
     companion_id: companionId,
@@ -61,20 +77,29 @@ export const addToSessionHistory = async (companionId: string) => {
   if(error) throw new Error(error.message);
 
   return data;
-
 }
 
 export const getRecentSessions = async (limit = 10) => {
+  const { userId } = await auth();
+  if (!userId) return []; // Return empty array if not authenticated
+  
   const supabase = createSupabaseClient();
-  const { data, error } = await supabase.from('session_history').select(`companions:companion_id (*)`).order('created_at', { ascending: false })
-  .limit(limit)
+  const { data, error } = await supabase
+    .from('session_history')
+    .select(`companions:companion_id (*)`)
+    .eq('user_id', userId) // Only get current user's sessions
+    .order('created_at', { ascending: false })
+    .limit(limit)
 
   if(error) throw new Error(error.message);
 
-  return data.map(({companions}) => companions)
+  return data?.map(({companions}) => companions).filter(Boolean) || [];
 }
 
 export const getUserSessions = async (userId: string, limit = 10) => {
+  const { userId: currentUserId } = await auth();
+  if (!currentUserId || currentUserId !== userId) return []; // Security check
+  
   const supabase = createSupabaseClient();
   const { data, error } = await supabase.from('session_history').select(`companions:companion_id (*)`)
   .eq('user_id', userId)
@@ -83,10 +108,13 @@ export const getUserSessions = async (userId: string, limit = 10) => {
 
   if(error) throw new Error(error.message);
 
-  return data.map(({companions}) => companions)
+  return data?.map(({companions}) => companions).filter(Boolean) || [];
 }
 
 export const getUserCompanions = async (userId: string) => {
+  const { userId: currentUserId } = await auth();
+  if (!currentUserId || currentUserId !== userId) return []; // Security check
+  
   const supabase = createSupabaseClient();
   const { data, error } = await supabase
   .from('companions')
@@ -95,11 +123,13 @@ export const getUserCompanions = async (userId: string) => {
 
   if(error) throw new Error(error.message);
 
-  return data;
+  return data || [];
 }
 
 export const newCompanionPermissions = async () => {
   const { userId, has } = await auth();
+  if (!userId) return false;
+  
   const supabase = createSupabaseClient();
 
   let limit = 0;
@@ -119,7 +149,7 @@ export const newCompanionPermissions = async () => {
 
     if(error) throw new Error(error.message);
 
-    const companionCount = data?.length;
+    const companionCount = data?.length || 0;
 
     if(companionCount >= limit) {
       return false
@@ -130,6 +160,8 @@ export const newCompanionPermissions = async () => {
 
 export const deleteCompanion = async (id: string) => {
   const { userId } = await auth();
+  if (!userId) throw new Error('User not authenticated');
+  
   const supabase = createSupabaseClient();
 
   // First, check if the current user is the author of the companion
@@ -155,6 +187,8 @@ export const deleteCompanion = async (id: string) => {
 
 export const newActiveCompanionPermissions = async () => {
   const { userId, has } = await auth();
+  if (!userId) return false;
+  
   const supabase = createSupabaseClient();
 
   // If on Pro or Core, allow unlimited
