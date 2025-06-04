@@ -74,7 +74,7 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
             vapi.off('speech-start', onSpeechStart);
             vapi.off('speech-end', onSpeechEnd);
         }
-    }, [])
+    }, [companionId])
 
     const toggleMicrophone = () => {
         const isMuted = vapi.isMuted();
@@ -93,17 +93,13 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
             serverMessages: [],
         }
 
-        // @ts-expect-error
+        // @ts-expect-error: vapi.start type mismatch, voice and style override not typed
         vapi.start(configureAssistant(voice, style), assistantOverrides)
     }
 
     const handleDisconnect = async () => {
         setCallStatus(CallStatus.FINISHED)
         vapi.stop()
-    }
-
-    const onError = (error: Error) => {
-        console.error('Vapi Error:', error);
     }
 
   return (

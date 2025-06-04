@@ -20,7 +20,6 @@ const CompanionCard = ({
   subject,
   duration,
   color,
-  isOwner = false,
 }: CompanionComponentProps) => {
   
   const handleDelete = async () => {
