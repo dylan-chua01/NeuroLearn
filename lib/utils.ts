@@ -17,7 +17,7 @@ export const voices = {
     formal: "VR6AewLTigWG4xSOukaG"  // Arnold - Professional and clear
   },
   female: {
-    casual: "EXAVITQu4vr4xnSDxMaL", // Bella - Warm and conversational  
+    casual: "oWAxZDx7w5VEj9dCyTzz", // Grace - Warm and conversational  
     formal: "21m00Tcm4TlvDq8ikWAM"  // Rachel - Professional and articulate
   }
 }
