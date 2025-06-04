@@ -13,12 +13,12 @@ export const getSubjectColor = (subject: string) => {
 
 export const voices = {
   male: {
-    casual: "2BJW5covhAzSr8STdHbE",
-    formal: "c6SfcYrb2t09NHXiT80T"
+    casual: "pNInz6obpgDQGcFmaJgB", // Adam - Natural and friendly
+    formal: "VR6AewLTigWG4xSOukaG"  // Arnold - Professional and clear
   },
   female: {
-    casual: "ZIlrSGI4jZgobxRKprJz",
-    formal: "EXAVITQu4vr4xnSDxMaL" // ✅ real ID
+    casual: "EXAVITQu4vr4xnSDxMaL", // Bella - Warm and conversational  
+    formal: "21m00Tcm4TlvDq8ikWAM"  // Rachel - Professional and articulate
   }
 }
 
