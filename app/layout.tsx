@@ -10,10 +10,14 @@ const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "NeuroLearn",
-  description: "Real-time AI Teaching Platform",
+export const metadata = {
+  title: 'NeuroLearn',
+  description: 'Your AI-powered learning companion',
+  icons: {
+    icon: '/icons/neuroLearn_logo.png',
+  },
 };
+
 
 export default function RootLayout({
   children,

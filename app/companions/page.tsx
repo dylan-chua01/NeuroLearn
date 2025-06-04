@@ -94,7 +94,7 @@ const CompanionsLibrary = async ({ searchParams }: SearchParams) => {
                 </button>
               </Link>
             )}
-            <Link href="/create-companion">
+            <Link href="/companions/new">
               <button className='bg-gradient-to-r from-emerald-500 to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold hover:from-emerald-600 hover:to-emerald-700 transition-all duration-300 shadow-lg hover:shadow-xl'>
                 Create Companion
               </button>
