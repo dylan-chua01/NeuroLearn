@@ -194,6 +194,7 @@ const CompanionForm = () => {
                 <Input
                     type="number"
                     placeholder="15"
+                    max={15}
                     {...field} className="input" />
               </FormControl>
               <FormMessage />
