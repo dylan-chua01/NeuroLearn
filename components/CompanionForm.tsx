@@ -24,6 +24,8 @@ import { subjects } from "@/constants";
 import { Textarea } from "./ui/textarea";
 import { createCompanion } from "@/lib/actions/companion.actions";
 import { redirect } from "next/navigation";
+import { Loader2 } from "lucide-react"
+import { useState } from "react";
 
 const formSchema = z.object({
     name: z.string().min(1, { message: 'Companion is required' }),
@@ -36,6 +38,7 @@ const formSchema = z.object({
 
 
 const CompanionForm = () => {
+  const [loading, setLoading] = useState(false)
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -49,15 +52,17 @@ const CompanionForm = () => {
   })
  
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    const companion = await createCompanion(values);
+    setLoading(true)
+    const companion = await createCompanion(values)
 
-    if(companion) {
-        redirect (`/companions/${companion.id}`);
+    if (companion) {
+      redirect(`/companions/${companion.id}`)
     } else {
-        console.log('Failed to create a companion');
-        redirect('/');
+      console.log('Failed to create a companion')
+      redirect('/')
     }
   }
+
 
   return (
     <Form {...form}>
@@ -199,7 +204,20 @@ const CompanionForm = () => {
             </FormItem>
           )}
         />
-        <Button type="submit" className="w-full cursor-pointer">Build your Companion</Button>
+        <Button
+          type="submit"
+          className="w-full cursor-pointer"
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin mr-2 h-4 w-4" />
+              Building...
+            </>
+          ) : (
+            "Build your Companion"
+          )}
+        </Button>
       </form>
     </Form>
   )
