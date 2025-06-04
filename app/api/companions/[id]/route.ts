@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { createSupabaseClient } from "@/lib/supabase";
 import { auth } from "@clerk/nextjs/server";
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: Request,
+  context: { params: Record<string, string> }
+) {
   const supabase = createSupabaseClient();
   const { userId } = await auth();
 
-  const companionId = params.id;
+  const companionId = context.params.id;
 
   // Check ownership (optional)
   const { data: companion, error: fetchError } = await supabase
