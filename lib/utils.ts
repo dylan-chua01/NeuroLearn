@@ -22,11 +22,10 @@ export const voices = {
   }
 }
 
-
-
-
 export const configureAssistant = (voice: string, style: string) => {
-  const voiceId = voices[voice as keyof typeof voices][style as keyof (typeof voices)[keyof typeof voices]] || "sarah";
+  // Better fallback handling
+  const voiceCategory = voices[voice as keyof typeof voices];
+  const voiceId = voiceCategory?.[style as keyof typeof voiceCategory] || "oWAxZDx7w5VEj9dCyTzz";
 
   const vapiAssistant: CreateAssistantDTO = {
     name: "Companion",
@@ -60,10 +59,8 @@ export const configureAssistant = (voice: string, style: string) => {
         Keep your style of conversation {{style}}.
         Keep your responses short, like in a real voice conversation.
         Do not include any special characters in your responses - this is a voice conversation.`
-      }
-    ]
+      }]
     },
   };
   return vapiAssistant;
 }
-
