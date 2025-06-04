@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { Bricolage_Grotesque } from "next/font/google";
 import "./globals.css";
 import NavBar from "@/components/NavBar";

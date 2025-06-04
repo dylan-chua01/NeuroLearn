@@ -1,6 +1,4 @@
 export const dynamic = 'force-dynamic';
-
-import CTA from '@/components/CTA';
 import CompanionsList from '@/components/CompanionsList';
 import { getAllCompanions, getRecentSessions } from '@/lib/actions/companion.actions';
 import Link from 'next/link';

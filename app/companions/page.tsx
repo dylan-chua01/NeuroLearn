@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 
 import { auth } from "@clerk/nextjs/server";
-import { SignInButton } from "@clerk/nextjs";
 import Link from 'next/link';
 import CompanionCard from '@/components/CompanionCard';
 import SearchInput from '@/components/SearchInput';
@@ -81,8 +80,9 @@ const CompanionsLibrary = async ({ searchParams }: SearchParams) => {
               <>
                 <h2 className='text-2xl font-bold text-gray-800'>Create your first companion</h2>
                 <p className='text-gray-600 max-w-md'>
-                  You haven't created any AI companions yet. Start building your personalized learning experience by creating your first companion.
-                </p>
+  You haven&apos;t created any AI companions yet. Start building your personalized learning experience by creating your first companion.
+</p>
+
               </>
             )}
           </div>
