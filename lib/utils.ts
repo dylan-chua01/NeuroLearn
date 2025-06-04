@@ -22,39 +22,30 @@ export const voices = {
   }
 }
 
-// Add this function to help debug
-export const debugVoiceConfig = () => {
-  console.log("🔍 Voice Configuration Debug:");
-  console.log("Current timestamp:", new Date().toISOString());
-  console.log("Available voices:", JSON.stringify(voices, null, 2));
-  console.log("User agent:", navigator.userAgent);
-  console.log("Current URL:", window.location.href);
-  
-  // Test all voice combinations
-  Object.entries(voices).forEach(([voiceType, styles]) => {
-    Object.entries(styles).forEach(([style, voiceId]) => {
-      console.log(`${voiceType}-${style}: ${voiceId}`);
-    });
-  });
-};
-
 export const configureAssistant = (voice: string, style: string) => {
-  // Call debug function
-  debugVoiceConfig();
-  
   console.log("🔧 configureAssistant called with:", { voice, style });
-  console.log("🔧 Build timestamp:", process.env.NEXT_PUBLIC_BUILD_TIME || "not set");
   
   const voiceCategory = voices[voice as keyof typeof voices];
   const voiceId = voiceCategory?.[style as keyof typeof voiceCategory] || "oWAxZDx7w5VEj9dCyTzz";
   
   console.log("🔧 Selected voiceId:", voiceId);
   
-  // Alert users if old voice ID somehow appears
-  if (voiceId.includes("ZIlrSGI4jZgobxRKprJz") || voiceId.includes("2BJW5covhAzSr8STdHbE")) {
-    console.error("❌ CRITICAL: Old voice ID detected!");
-    alert("Please clear your browser cache and refresh the page.");
+  // Check for old voice IDs
+  if (voiceId === "ZIlrSGI4jZgobxRKprJz" || voiceId === "2BJW5covhAzSr8STdHbE") {
+    console.error("❌ Old voice ID detected! Cache may need clearing.");
   }
+
+  const voiceConfig = {
+    provider: "11labs",
+    voiceId: voiceId,
+    stability: 0.4,
+    similarityBoost: 0.8,
+    speed: 0.9,
+    style: 0.5,
+    useSpeakerBoost: true,
+  } as const;
+
+  console.log("🔧 Voice config:", voiceConfig);
 
   const vapiAssistant: CreateAssistantDTO = {
     name: "Companion",
@@ -64,15 +55,7 @@ export const configureAssistant = (voice: string, style: string) => {
       model: "nova-3",
       language: "en",
     },
-    voice: {
-      provider: "11labs",
-      voiceId: voiceId,
-      stability: 0.4,
-      similarityBoost: 0.8,
-      speed: 0.9,
-      style: 0.5,
-      useSpeakerBoost: true,
-    },
+    voice: voiceConfig,
     model: {
       provider: "openai",
       model: "gpt-4",
@@ -92,6 +75,5 @@ export const configureAssistant = (voice: string, style: string) => {
     },
   };
   
-  console.log("🔧 Final voice ID being sent:", vapiAssistant.voice.voiceId);
   return vapiAssistant;
 }
