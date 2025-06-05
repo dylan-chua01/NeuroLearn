@@ -191,7 +191,6 @@ export const newActiveCompanionPermissions = async () => {
   
   const supabase = createSupabaseClient();
 
-  // If on Pro or Core, allow unlimited
   if (has({ plan: 'pro' }) || has({ plan: 'core_learner' })) {
     return true;
   }

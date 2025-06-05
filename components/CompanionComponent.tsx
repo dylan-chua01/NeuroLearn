@@ -15,7 +15,7 @@ enum CallStatus {
     FINISHED = 'FINISHED'
 }
 
-const CompanionComponent = ({ companionId, subject, topic, name, userName, userImage, style, voice }: CompanionComponentProps) => {
+const CompanionComponent = ({ companionId, subject, topic, name, userName, userImage, style, voice, language }: CompanionComponentProps) => {
     const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -94,7 +94,7 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
         }
 
         // @ts-expect-error: vapi.start type mismatch, voice and style override not typed
-        vapi.start(configureAssistant(voice, style), assistantOverrides)
+        vapi.start(configureAssistant(voice, style, language), assistantOverrides)
     }
 
     const handleDisconnect = async () => {
@@ -126,13 +126,13 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
 
             <div className='user-section'>
                 <div className='user-avatar'>
-                    <Image src={userImage} alt={userName} width={130} height={130} className='rounded-lg' />
+                    <Image src={userImage} alt={`${userName} Image`} width={130} height={130} className='rounded-lg' />
                     <p className='font-bold text-2xl'>
                         {userName}
                     </p>
                 </div>
                 <button className='btn-mic' onClick={toggleMicrophone} disabled={callStatus !== CallStatus.ACTIVE} >
-                    <Image src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'} alt='mic' width={36} height={36} />
+                    <Image src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'} alt={`${userName} mic`} width={36} height={36} />
                     <p className='max-sm:hidden'>
                         {isMuted ? 'Turn on microphone' : 'Turn off microphone'}
                     </p>

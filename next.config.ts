@@ -1,9 +1,15 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      { hostname: 'img.clerk.com' }
-    ]
-  }
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+        pathname: '/**', // Allow all paths from Clerk
+      },
+    ],
+  },
 };
+
+export default nextConfig;
