@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form"
 import { useState } from "react"
 import { redirect } from "next/navigation"
 import { Loader2 } from "lucide-react"
-
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -56,6 +55,7 @@ const CompanionForm = () => {
       language: '',
     },
   })
+
 
   const onSubmit = async (values: FormData) => {
     try {

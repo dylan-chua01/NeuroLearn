@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createSupabaseClient } from "../supabase";
+import { fetchCallTranscript } from "../vapi";
 
 export const createCompanion = async (formData: CreateCompanion) => {
   const { userId: author } = await auth();
@@ -64,6 +65,47 @@ export const getCompanion = async (id: string) => {
   return data?.[0] || null;
 }
 
+// NEW: Create session history row when call starts (without call_id)
+export const createSessionHistory = async (companionId: string) => {
+  const { userId } = await auth();
+  if (!userId) throw new Error('User not authenticated');
+  
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from('session_history')
+    .insert({
+      companion_id: companionId,
+      user_id: userId,
+      // call_id will be null initially
+    })
+    .select()
+    .single();
+
+  if(error) throw new Error(error.message);
+
+  return data; // Return the created row with its ID
+}
+
+// UPDATED: Update existing session with call_id
+export const updateSessionHistory = async (sessionId: string, callId: string) => {
+  const { userId } = await auth();
+  if (!userId) throw new Error('User not authenticated');
+  
+  const supabase = createSupabaseClient();
+  const { data, error } = await supabase
+    .from('session_history')
+    .update({ call_id: callId })
+    .eq('id', sessionId)
+    .eq('user_id', userId) // Security check
+    .select()
+    .single();
+
+  if(error) throw new Error(error.message);
+
+  return data;
+}
+
+// DEPRECATED: Keep for backward compatibility but rename
 export const addToSessionHistory = async (companionId: string) => {
   const { userId } = await auth();
   if (!userId) throw new Error('User not authenticated');
@@ -72,6 +114,7 @@ export const addToSessionHistory = async (companionId: string) => {
   const { data, error } = await supabase.from('session_history').insert({
     companion_id: companionId,
     user_id: userId,
+    
   })
 
   if(error) throw new Error(error.message);
@@ -209,3 +252,61 @@ export const newActiveCompanionPermissions = async () => {
 
   return (count ?? 0) < 10;
 };
+
+
+export async function getSessionsWithCallIds() {
+  try {
+    const { userId } = await auth();
+    if (!userId) return [];
+    
+    const supabase = createSupabaseClient();
+
+    const { data: sessions, error } = await supabase
+      .from('session_history')
+      .select(`
+        id,
+        call_id,
+        created_at,
+        companions:companion_id (
+          name,
+          subject
+        )
+      `)
+      .eq('user_id', userId)
+      .not('call_id', 'is', null) // Only get sessions that have a call ID
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error('Error fetching sessions with call IDs:', error);
+      throw new Error('Failed to fetch session transcripts');
+    }
+
+    return (sessions || []).map(session => ({
+      id: session.id,
+      callId: session.call_id,
+      companionName: session.companions?.name || 'Unknown Companion',
+      companionSubject: session.companions?.subject || 'general',
+      createdAt: session.created_at
+    }));
+  } catch (error) {
+    console.error('Error fetching sessions with call IDs:', error);
+    throw new Error('Failed to fetch session transcripts');
+  }
+}
+
+export async function getCallTranscript(callId: string) {
+  try {
+    const transcript = await fetchCallTranscript(callId);
+    return {
+      success: true,
+      data: transcript
+    };
+  } catch (error) {
+    console.error('Error fetching call transcript:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch transcript'
+    };
+  }
+}
