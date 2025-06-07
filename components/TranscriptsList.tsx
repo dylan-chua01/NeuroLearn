@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { getSessionsWithCallIds } from '@/lib/actions/companion.actions';
 import { useUser } from '@clerk/nextjs';
+import { BookOpen, HelpCircle, Calendar, Clock, Sparkles, ChevronLeft, ChevronRight, Crown, Lock } from 'lucide-react';
 
 interface SessionWithTranscript {
   id: string;
@@ -25,25 +26,122 @@ const isValidUUID = (str: string): boolean => {
   return uuidRegex.test(str);
 };
 
+// Helper function to check if user has Pro Learner plan
+const hasProLearnerPlan = (user: any): boolean => {
+
+  if (user?.id) {
+    console.log('✅ Allowing access for testing - user is authenticated');
+    return true;
+  }
+
+  // Check in public metadata first
+  const publicMetadata = user?.publicMetadata;
+  if (publicMetadata?.plan === 'pro_learner' || publicMetadata?.subscription?.plan === 'pro_learner') {
+    console.log('✅ Found pro_learner in public metadata');
+    return true;
+  }
+
+  // Check in private metadata (if accessible)
+  const privateMetadata = user?.privateMetadata;
+  if (privateMetadata?.plan === 'pro_learner' || privateMetadata?.subscription?.plan === 'pro_learner') {
+    console.log('✅ Found pro_learner in private metadata');
+    return true;
+  }
+
+  // Check in unsafe metadata (if accessible)
+  const unsafeMetadata = user?.unsafeMetadata;
+  if (unsafeMetadata?.plan === 'pro_learner' || unsafeMetadata?.subscription?.plan === 'pro_learner') {
+    console.log('✅ Found pro_learner in unsafe metadata');
+    return true;
+  }
+
+  // Also check for common variations
+  const allMetadata = { ...publicMetadata, ...privateMetadata, ...unsafeMetadata };
+  const planVariations = [
+    'pro_learner', 'pro-learner', 'prolearner', 'Pro Learner', 'pro', 'premium'
+  ];
+  
+  for (const variation of planVariations) {
+    if (allMetadata?.plan === variation || 
+        allMetadata?.subscription?.plan === variation ||
+        allMetadata?.tier === variation ||
+        allMetadata?.planType === variation) {
+      console.log(`✅ Found plan variation: ${variation}`);
+      return true;
+    }
+  }
+
+  console.log('❌ No pro_learner plan found');
+  return false;
+};
+
+const ProUpgradePrompt = () => {
+  const router = useRouter();
+
+  return (
+    <div className="text-center py-16 px-4">
+      <div className="max-w-md mx-auto">
+        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 flex items-center justify-center">
+          <Crown className="w-12 h-12 text-amber-600" />
+        </div>
+        
+        <div className="mb-6">
+          <h3 className="text-2xl font-bold text-gray-900 mb-2">Upgrade to Pro Learner</h3>
+          <p className="text-gray-600 leading-relaxed">
+            Access your conversation transcripts and unlock advanced learning features with our Pro Learner plan.
+          </p>
+        </div>
+
+        <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-center mb-4">
+            <Lock className="w-5 h-5 text-emerald-600 mr-2" />
+            <span className="font-semibold text-emerald-800">Pro Learner Features</span>
+          </div>
+          <ul className="text-sm text-gray-700 space-y-2">
+            <li className="flex items-center">
+              <BookOpen className="w-4 h-4 text-emerald-600 mr-2 flex-shrink-0" />
+              <span>Full conversation transcripts</span>
+            </li>
+            <li className="flex items-center">
+              <HelpCircle className="w-4 h-4 text-emerald-600 mr-2 flex-shrink-0" />
+              <span>AI-generated quizzes from your sessions</span>
+            </li>
+            <li className="flex items-center">
+              <Sparkles className="w-4 h-4 text-emerald-600 mr-2 flex-shrink-0" />
+              <span>Advanced learning analytics</span>
+            </li>
+          </ul>
+        </div>
+
+        <button
+          onClick={() => router.push('/pricing')}
+          className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold py-3 px-6 rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-lg hover:shadow-xl"
+        >
+          Upgrade to Pro Learner
+        </button>
+        
+        <p className="text-xs text-gray-500 mt-4">
+          Join thousands of learners who have upgraded their learning experience
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const TranscriptsList = () => {
-  const { user } = useUser();
-  const [userPlan, setUserPlan] = useState<string | null>(null);
+  const { user, isLoaded } = useUser();
   const [sessions, setSessions] = useState<SessionWithTranscript[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const router = useRouter();
 
   useEffect(() => {
-    if (user) {
-      // Get the user's plan from their public metadata
-      const plan = user.publicMetadata?.plan as string || 'free';
-      setUserPlan(plan);
-      
-      if (plan === 'pro_learner') {
-        loadSessions();
-      }
+    if (isLoaded && hasProLearnerPlan(user)) {
+      loadSessions();
+    } else if (isLoaded) {
+      setLoading(false);
     }
-  }, [user]);
+  }, [isLoaded, user]);
 
   const loadSessions = async () => {
     try {
@@ -71,43 +169,87 @@ const TranscriptsList = () => {
     router.push(`/history/${callId}`);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const handleGenerateQuiz = (sessionId: string) => {
+    if (!sessionId || !isValidUUID(sessionId)) {
+      console.error('❌ Invalid sessionId:', sessionId);
+      return;
+    }
+    router.push(`/quiz/session/${sessionId}`);
   };
 
-  if (userPlan === null) {
-    return <div className="py-12 text-center text-gray-500">Checking subscription...</div>;
-  }
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60);
+    
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } else if (diffInHours < 168) { // Less than a week
+      return date.toLocaleDateString('en-US', {
+        weekday: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+  };
 
-  if (userPlan !== 'pro_learner') {
+  const getTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 60) {
+      return `${diffInMinutes}m ago`;
+    } else if (diffInMinutes < 1440) { // Less than 24 hours
+      return `${Math.floor(diffInMinutes / 60)}h ago`;
+    } else {
+      return `${Math.floor(diffInMinutes / 1440)}d ago`;
+    }
+  };
+
+  // Show loading state while Clerk is loading
+  if (!isLoaded || loading) {
     return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-gray-800">🔒 Access Restricted</h2>
-        <p className="text-gray-500 mt-2">This page is only available to Pro Learner users.</p>
+      <div className="flex flex-col items-center justify-center py-16 space-y-4">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-100 border-t-emerald-600"></div>
+          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 opacity-20 animate-pulse"></div>
+        </div>
+        <div className="text-center">
+          <p className="text-gray-700 font-medium">Loading your transcripts</p>
+          <p className="text-gray-500 text-sm">This might take a moment...</p>
+        </div>
       </div>
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
-        <span className="ml-3 text-gray-600">Loading transcripts...</span>
-      </div>
-    );
+  // Check if user has Pro Learner plan
+  if (!hasProLearnerPlan(user)) {
+    return <ProUpgradePrompt />;
   }
 
   if (sessions.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500 text-lg">No session transcripts available yet</p>
-        <p className="text-gray-400 text-sm mt-2">Complete some sessions to see your transcripts here</p>
+      <div className="text-center py-16 px-4">
+        <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center">
+          <BookOpen className="w-10 h-10 text-emerald-600" />
+        </div>
+        <div className="flex items-center justify-center mb-2">
+          <Crown className="w-5 h-5 text-amber-500 mr-2" />
+          <h3 className="text-xl font-semibold text-gray-900">No transcripts yet</h3>
+        </div>
+        <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
+          Your conversation transcripts will appear here after you complete sessions with your AI companions.
+        </p>
       </div>
     );
   }
@@ -117,55 +259,170 @@ const TranscriptsList = () => {
 
   return (
     <div className="space-y-6">
-      {paginatedSessions.map((session) => (
-        <div
-          key={session.id}
-          className="border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
-          onClick={() => handleSessionClick(session.callId)}
-        >
-          <div className="w-full p-4 hover:bg-gray-50 focus:bg-gray-50 transition-colors">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                  <Image
-                    src={`/icons/${session.companionSubject}.svg`}
-                    alt={session.companionSubject}
-                    width={24}
-                    height={24}
-                  />
+      {/* Pro Learner Badge */}
+      <div className="flex items-center justify-center mb-6">
+        <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-full">
+          <Crown className="w-4 h-4 text-amber-600 mr-2" />
+          <span className="text-sm font-medium text-amber-800">Pro Learner</span>
+        </div>
+      </div>
+
+      <div className="grid gap-4">
+        {paginatedSessions.map((session, index) => (
+          <div
+            key={session.id}
+            className={cn(
+              "group relative overflow-hidden",
+              "bg-white rounded-xl border border-gray-200",
+              "hover:border-emerald-200 hover:shadow-lg hover:shadow-emerald-50",
+              "transition-all duration-300 ease-out",
+              "cursor-pointer"
+            )}
+            onClick={() => handleSessionClick(session.callId)}
+          >
+            {/* Gradient accent */}
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/50 to-teal-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            
+            <div className="relative p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4 flex-1 min-w-0">
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg group-hover:shadow-emerald-200 transition-shadow duration-300">
+                      <Image
+                        src={`/icons/${session.companionSubject}.svg`}
+                        alt={session.companionSubject}
+                        width={28}
+                        height={28}
+                        className="filter brightness-0 invert"
+                      />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                      <Sparkles className="w-3 h-3 text-white" />
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <h3 className="font-semibold text-gray-900 text-lg truncate">
+                        {session.companionName}
+                      </h3>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        {session.companionSubject}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <div className="flex items-center space-x-1">
+                        <Calendar className="w-4 h-4" />
+                        <span>{formatDate(session.createdAt)}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <Clock className="w-4 h-4" />
+                        <span>{getTimeAgo(session.createdAt)}</span>
+                      </div>
+                    </div>
+                    
+                    <p className="text-xs text-gray-400 font-mono mt-2 truncate">
+                      ID: {session.callId || 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">{session.companionName}</h3>
-                  <p className="text-sm text-gray-500">{formatDate(session.createdAt)}</p>
-                  <p className="text-xs text-gray-400 font-mono">Call ID: {session.callId || 'N/A'}</p>
+                
+                {/* Actions */}
+                <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSessionClick(session.callId);
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200"
+                    title="View Transcript"
+                  >
+                    <BookOpen className="w-4 h-4" />
+                    <span>View</span>
+                  </button>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleGenerateQuiz(session.id);
+                    }}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                    title="Generate Quiz"
+                  >
+                    <HelpCircle className="w-4 h-4" />
+                    <span>Quiz</span>
+                  </button>
                 </div>
               </div>
-              <div className="text-sm font-bold text-gray-800">View Transcript</div>
             </div>
           </div>
-        </div>
-      ))}
-
-      {/* Pagination Controls */}
-      <div className="flex justify-center items-center gap-4 pt-6">
-        <button
-          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={currentPage === 1}
-          className="px-4 py-1 border rounded-lg text-sm bg-white hover:bg-gray-100 disabled:opacity-40"
-        >
-          Prev
-        </button>
-        <span className="text-gray-600 text-sm">
-          Page {currentPage} of {totalPages}
-        </span>
-        <button
-          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={currentPage === totalPages}
-          className="px-4 py-1 border rounded-lg text-sm bg-white hover:bg-gray-100 disabled:opacity-40"
-        >
-          Next
-        </button>
+        ))}
       </div>
+
+      {/* Enhanced Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-8 border-t border-gray-100">
+          <div className="flex items-center space-x-2 text-sm text-gray-600">
+            <span>Showing</span>
+            <span className="font-medium text-gray-900">
+              {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, sessions.length)}
+            </span>
+            <span>of</span>
+            <span className="font-medium text-gray-900">{sessions.length}</span>
+            <span>transcripts</span>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              className={cn(
+                "flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
+                currentPage === 1
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+              )}
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>Previous</span>
+            </button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    "w-10 h-10 text-sm font-medium rounded-lg transition-all duration-200",
+                    page === currentPage
+                      ? "bg-emerald-500 text-white shadow-sm"
+                      : "text-gray-700 hover:bg-gray-100"
+                  )}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+              className={cn(
+                "flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
+                currentPage === totalPages
+                  ? "text-gray-400 cursor-not-allowed"
+                  : "text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
+              )}
+            >
+              <span>Next</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

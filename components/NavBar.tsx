@@ -75,6 +75,7 @@ const NavBar = () => {
                     <p className='text-sm text-gray-600'>Welcome back!</p>
                   </div>
                   
+                  
                   {/* Enhanced user button container */}
                   <div className='relative'>
                     <div className='p-1 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105'>

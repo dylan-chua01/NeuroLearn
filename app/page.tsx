@@ -1,13 +1,15 @@
 export const dynamic = 'force-dynamic';
 import CompanionsList from '@/components/CompanionsList';
 import TranscriptsList from '@/components/TranscriptsList';
-import { getAllCompanions, getRecentSessions } from '@/lib/actions/companion.actions';
+import { canViewTranscripts, getAllCompanions, getRecentSessions } from '@/lib/actions/companion.actions';
 import Link from 'next/link';
 import React from 'react';
+
 
 const Page = async () => {
   const companions = await getAllCompanions({ limit: 3 });
   const recentSessionsCompanions = await getRecentSessions(10);
+  const hasAccess = await canViewTranscripts();
 
   return (
     <main className="bg-gradient-to-br from-slate-50 to-emerald-50/30 min-h-screen py-10">
@@ -61,15 +63,27 @@ const Page = async () => {
 
          {/* Session Transcripts Section */}
          <section className="bg-white rounded-2xl shadow-lg border border-blue-100 p-10 w-full">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
-            <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
-              Session Transcripts
-            </h2>
-            <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent ml-4" />
-          </div>
-          <TranscriptsList />
-        </section>
+  <div className="flex items-center gap-3 mb-4">
+    <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full" />
+    <h2 className="text-3xl font-bold bg-gradient-to-r from-emerald-700 to-teal-700 bg-clip-text text-transparent">
+      Session Transcripts and Quiz
+    </h2>
+    <div className="flex-1 h-px bg-gradient-to-r from-blue-200 to-transparent ml-4" />
+  </div>
+
+  {/* Added note below title */}
+  <p className="text-blue-600 mb-6 text-sm italic">
+    📘 A quiz will be generated automatically based on the content of each session.
+  </p>
+
+  {hasAccess ? (
+        <TranscriptsList />
+      ) : (
+        <div className="text-gray-500 italic text-sm">
+          Upgrade to Pro or Core Learner to view your call transcripts.
+        </div>
+      )}
+</section>
 
 
       </div>

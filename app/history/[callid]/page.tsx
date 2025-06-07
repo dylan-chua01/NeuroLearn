@@ -5,7 +5,10 @@ interface PageProps {
 }
 
 export default async function CallHistoryPage({ params }: PageProps) {
-  const callData = await fetchCallTranscript(params.callid);
+  // Await the params before using them
+  const { callid } = await params;
+  
+  const callData = await fetchCallTranscript(callid);
   const transcript = callData?.transcript;
 
   return (
@@ -16,7 +19,7 @@ export default async function CallHistoryPage({ params }: PageProps) {
             📝 Call Transcript
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            Call ID: <span className="font-mono text-gray-600">{params.callid}</span>
+            Call ID: <span className="font-mono text-gray-600">{callid}</span>
           </p>
         </div>
 

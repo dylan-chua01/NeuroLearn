@@ -177,7 +177,7 @@ export const newCompanionPermissions = async () => {
 
   let limit = 0;
 
-  if(has({ plan: 'pro' })) {
+  if(has({ plan: 'pro_learner' })) {
     return true;
   } else if(has({ feature: "3_companion_limit"})) {
     limit = 3;
@@ -234,7 +234,7 @@ export const newActiveCompanionPermissions = async () => {
   
   const supabase = createSupabaseClient();
 
-  if (has({ plan: 'pro' }) || has({ plan: 'core_learner' })) {
+  if (has({ plan: 'pro_learner' }) || has({ plan: 'core_learner' })) {
     return true;
   }
 
@@ -310,3 +310,11 @@ export async function getCallTranscript(callId: string) {
     };
   }
 }
+
+
+export const canViewTranscripts = async () => {
+  const { userId, has } = await auth();
+  if (!userId) return false;
+
+  return has({ plan: 'pro_learner' });
+};
