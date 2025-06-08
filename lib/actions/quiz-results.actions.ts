@@ -9,6 +9,7 @@ export interface QuizAnswer {
   selectedAnswer: string;
   correctAnswer: string;
   isCorrect: boolean;
+  explanation?: string;
   timeSpent?: number;
 }
 

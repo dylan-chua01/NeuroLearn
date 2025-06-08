@@ -24,6 +24,7 @@ export default function InteractiveQuizClient({ quiz }: InteractiveQuizClientPro
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [quizStartTime] = useState<Date>(new Date()); // Track quiz start time
 
   const handleAnswerSelect = (questionIndex: number, answerIndex: number) => {
     if (isSubmitted) return;
@@ -48,21 +49,23 @@ export default function InteractiveQuizClient({ quiz }: InteractiveQuizClientPro
     setIsSubmitted(true);
     setShowResults(true);
   
-    const now = new Date();
-    const startedAt = now; // Change if you track quiz start
     const completedAt = new Date();
+    const totalTimeSpent = completedAt.getTime() - quizStartTime.getTime();
   
+    // Updated submission payload to include explanations
     const submissionPayload = {
       quizId: quiz.id, 
       answers: quiz.questions.map((q, index) => ({
         questionIndex: index,
         question: q.question,
-        selectedAnswer: q.options[selectedAnswers[index]],
+        selectedAnswer: q.options[selectedAnswers[index]] || '',
         correctAnswer: q.options[q.correctAnswer],
         isCorrect: selectedAnswers[index] === q.correctAnswer,
+        explanation: q.explanation || '', // Include explanation here
+        timeSpent: 0 // Could track per-question time if needed
       })),
-      totalTimeSpent: 0, // Optional: calculate actual time
-      startedAt,
+      totalTimeSpent,
+      startedAt: quizStartTime,
       completedAt
     };
   
@@ -78,9 +81,10 @@ export default function InteractiveQuizClient({ quiz }: InteractiveQuizClientPro
       console.log('Quiz submitted successfully:', data.result);
     } catch (error) {
       console.error('Failed to submit quiz:', error);
+      // You might want to show an error message to the user here
+      alert('Failed to submit quiz. Please try again.');
     }
   };
-  
 
   const handleRestart = () => {
     setSelectedAnswers({});
@@ -179,13 +183,14 @@ export default function InteractiveQuizClient({ quiz }: InteractiveQuizClientPro
                       })}
                     </div>
 
+                    {/* Enhanced Explanation Display */}
                     {question.explanation && (
-                      <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-lg">
-                        <div className="flex items-center space-x-2 text-blue-800 mb-1">
-                          <Lightbulb className="h-4 w-4" />
-                          <span className="font-medium">Explanation</span>
+                      <div className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+                        <div className="flex items-center space-x-2 text-blue-800 mb-2">
+                          <Lightbulb className="h-5 w-5" />
+                          <span className="font-semibold">Explanation</span>
                         </div>
-                        <p className="text-blue-700">{question.explanation}</p>
+                        <p className="text-blue-700 leading-relaxed">{question.explanation}</p>
                       </div>
                     )}
                   </div>
@@ -195,13 +200,23 @@ export default function InteractiveQuizClient({ quiz }: InteractiveQuizClientPro
           })}
         </div>
 
-        <div className="text-center">
+        {/* Enhanced Action Buttons */}
+        <div className="text-center space-y-4">
           <button
             onClick={handleRestart}
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-md hover:shadow-lg mr-4"
           >
             <RotateCcw className="h-5 w-5 mr-2" />
             Take Quiz Again
+          </button>
+          
+          {/* Optional: Add a button to view saved results */}
+          <button
+            onClick={() => window.location.href = '/my-journey'}
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-medium rounded-lg hover:from-purple-600 hover:to-pink-700 transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            <Trophy className="h-5 w-5 mr-2" />
+            View All Results
           </button>
         </div>
       </div>

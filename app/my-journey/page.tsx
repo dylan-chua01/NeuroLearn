@@ -171,10 +171,6 @@ const Profile = async () => {
           </div>
         </div>
       </div>
-      <div className="flex justify-between items-center text-sm text-gray-500">
-        <span>{result.time_taken && `${Math.round(result.time_taken / 60)} mins`}</span>
-        <span>{new Date(result.completed_at).toLocaleDateString()}</span>
-      </div>
     </div>
   </Link>
 ))}

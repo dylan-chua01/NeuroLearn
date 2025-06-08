@@ -64,9 +64,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <p className="text-lg font-semibold">
             Score: {result.score}/{result.total_questions} ({Math.round(result.percentage)}%)
           </p>
-          <p className="text-sm text-gray-600 mt-2">
-            Time Taken: {Math.round(result.time_taken / 60)} mins
-          </p>
+          
           <p className="text-sm text-gray-600 mt-2">
             Completed on: {new Date(result.completed_at).toLocaleDateString()}
           </p>

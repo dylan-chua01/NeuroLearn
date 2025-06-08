@@ -8,7 +8,7 @@ import React from 'react';
 
 const Page = async () => {
   const companions = await getAllCompanions({ limit: 3 });
-  const recentSessionsCompanions = await getRecentSessions(10);
+  const recentSessionsCompanions = await getRecentSessions(5);
   const hasAccess = await canViewTranscripts();
 
   return (
