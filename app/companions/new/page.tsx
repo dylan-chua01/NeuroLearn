@@ -14,7 +14,8 @@ const NewCompanion = async () => {
 
     // Step 2: Check if the user has any valid subscription or feature flag
     const hasPlan =
-    has({ plan: 'core' }) ||
+    has({ plan: 'pro_learner' }) ||
+    has({ plan: 'core_learner' }) ||
     has({ plan: 'basic' });
 
   // Step 3: If no plan at all, block access

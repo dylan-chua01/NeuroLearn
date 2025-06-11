@@ -15,7 +15,17 @@ enum CallStatus {
     FINISHED = 'FINISHED'
 }
 
-const CompanionComponent = ({ companionId, subject, topic, name, userName, userImage, style, voice, language }: CompanionComponentProps) => {
+const CompanionComponent = ({ companionId, 
+    subject, 
+    topic, 
+    name, 
+    userName, 
+    userImage, 
+    style, 
+    voice, 
+    language,
+    pdf_content,  // Destructure PDF props
+    pdf_name }: CompanionComponentProps) => {
     const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
@@ -24,6 +34,13 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
     const [sessionHistoryId, setSessionHistoryId] = useState<string | null>(null);
 
     const lottieRef = useRef<LottieRefCurrentProps>(null);
+
+    console.log('Rendering CompanionComponent with props:', {
+        companionId,
+        topic, // Make sure this exists
+        subject,
+        // other props
+      });
 
     useEffect(() => {
         if(lottieRef) {
@@ -62,7 +79,7 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
                                 });
                         }
                     } else {
-                        console.warn('No call ID found on vapi instance');
+                        
                         // Try alternative method - check if vapi has a getCallId method
                         const altCallId = typeof (vapi as any).getCallId === 'function' 
                             ? (vapi as any).getCallId() 
@@ -105,7 +122,7 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
                     console.error("❌ Failed to update session with call ID on call end:", err);
                 }
             } else {
-                console.warn("⚠️ Call ID or sessionHistoryId missing at call end.");
+                
             }
         
             // Clean up state
@@ -157,36 +174,52 @@ const CompanionComponent = ({ companionId, subject, topic, name, userName, userI
         setCallStatus(CallStatus.CONNECTING);
     
         try {
-            // 1. Create session history row first
+            console.log('Starting call with:', {
+                voice,
+                style,
+                language,
+                topic, 
+                subject,
+                pdf_content,
+                pdf_name
+            });
+            
             const sessionData = await createSessionHistory(companionId);
-            setSessionHistoryId(sessionData.id);
-            console.log('Session history created with ID:', sessionData.id);
+      setSessionHistoryId(sessionData.id);
+  
+      const assistantOverrides = {
+        variableValues: { subject, topic, style },
+        clientMessages: ['transcript'],
+        serverMessages: [],
+      };
     
-            const assistantOverrides = {
-                variableValues: { subject, topic, style },
-                clientMessages: ['transcript'],
-                serverMessages: [],
-            };
+            
+      const response = await vapi.start(
+        configureAssistant(
+          voice as "male" | "female", 
+          style as "casual" | "formal", 
+          language as "en" | "zh" | "ms",
+          topic,
+          subject,
+          pdf_content,
+          pdf_name // Pass PDF content to assistant
+        ),
+        assistantOverrides
+      );
+  
     
-            // 2. Start the Vapi call
-            // @ts-expect-error
-            const response = await vapi.start(
-                configureAssistant(voice, style, language), 
-                assistantOverrides
-            );
-    
-            // 3. Get call ID - try multiple approaches
+            
             let callId: string | undefined;
             
-            // Try direct response property
+            
             if (response?.id) {
                 callId = response.id;
             } 
-            // Try vapi instance property
+            
             else if ((vapi as any)?.call?.id) {
                 callId = (vapi as any).call.id;
             }
-            // Try function call if available
+            
             else if (typeof (vapi as any).getCallId === 'function') {
                 callId = await (vapi as any).getCallId();
             }

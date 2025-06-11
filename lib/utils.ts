@@ -99,9 +99,11 @@ export const configureAssistant = (
   style: "casual" | "formal",
   language: "en" | "zh" | "ms", // FIXED: Added "ms" here
   topic?: string,
-  subject?: string
+  subject?: string,
+  pdfContent?: string,
+  pdfName?: string,
 ): CreateAssistantDTO => {
-  console.log("🔧 Configuring Assistant:", { voice, style, language, topic, subject });
+  console.log("🔧 Configuring Assistant:", { voice, style, language, topic, subject, hasPdf: !!pdfContent, pdfName });
 
   const voiceId = getVoiceId(language, voice, style);
 
@@ -117,18 +119,25 @@ export const configureAssistant = (
     firstMessage = firstMessage.replace("{{topic}}", topic);
   }
 
+  const pdfContext = pdfContent 
+    ? `\n\nPDF CONTEXT: The student has provided a PDF document titled "${pdfName || 'the document'}" with the following content:\n${pdfContent}\n\nYou should primarily use this content as the basis for your teaching, while supplementing with your own knowledge when needed.`
+    : '';
+
   const systemPrompt = `You are a highly knowledgeable tutor teaching a real-time voice session with a student. Your goal is to teach the student about the topic and subject.
 
 CRITICAL LANGUAGE REQUIREMENT: ${langConfig.instruction}
 
 Tutor Guidelines:
 - Stick to the given topic: "${topic || "the assigned topic"}" and subject: "${subject || "the assigned subject"}".
+- ${pdfContent ? 'Focus primarily on the content from the provided PDF document.' : 'Use your general knowledge about the topic.'}
 - Keep the conversation flowing smoothly while maintaining control.
 - Regularly ensure that the student is following and understanding.
 - Break down the topic into smaller parts and teach the student one part at a time.
 - Keep your style of conversation ${style}.
 - Keep your responses short, like in a real voice conversation.
 - Do not include any special characters in your responses - this is a voice conversation.
+
+${pdfContext}
 
 LANGUAGE ENFORCEMENT: Remember, you MUST follow the language instruction above. This overrides everything else. Every word you speak must be in the specified language.`;
 
