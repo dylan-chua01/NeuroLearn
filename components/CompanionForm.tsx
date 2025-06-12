@@ -5,7 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { useEffect, useState } from "react"
 import { redirect } from "next/navigation"
-import { Loader2, FileText, Upload, CheckCircle } from "lucide-react"
+import { useUser, useAuth } from "@clerk/nextjs"
+import { auth } from "@clerk/nextjs/server"
+import { Loader2, FileText, Upload, CheckCircle, Crown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -26,10 +28,62 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 import { subjects } from "@/constants"
 import { createCompanionWithPDF } from "@/lib/actions/companion.actions"
 import { PDFUpload } from "@/components/PDFUpload"
+
+// Subscription plan types and limits
+type SubscriptionPlan = 'basic' | 'core' | 'pro_learner';
+
+interface PlanLimits {
+  maxDuration: number;
+  name: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
+const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
+  basic: {
+    maxDuration: 15,
+    name: 'Basic Plan',
+    icon: undefined,
+    color: 'text-gray-600'
+  },
+  core: {
+    maxDuration: 30,
+    name: 'Core Learner',
+    icon: undefined,
+    color: 'text-blue-600'
+  },
+  pro_learner: {
+    maxDuration: 45,
+    name: 'Pro Learner',
+    icon: undefined,
+    color: 'text-yellow-600'
+  }
+};
+
+// Helper function to get user's subscription plan and duration limits from Clerk auth
+const getUserPlanAndLimits = (has: any): { plan: SubscriptionPlan; maxDuration: number } => {
+  if (has({ plan: 'pro_learner' })) {
+    return { plan: 'pro_learner', maxDuration: 45 };
+  } else if (has({ plan: 'core' })) {
+    return { plan: 'core', maxDuration: 30 };
+  } else if (has({ feature: 'extended_sessions' })) {
+    // Alternative way to check for extended session feature
+    return { plan: 'core', maxDuration: 30 };
+  } else {
+    return { plan: 'basic', maxDuration: 15 };
+  }
+};
 
 const formSchema = z.object({
   name: z.string().min(1, { message: 'Companion name is required' }),
@@ -54,21 +108,50 @@ const LOADING_STAGES = [
 ]
 
 const CompanionForm = () => {
+  const { user, isLoaded } = useUser();
+  const { has } = useAuth();
   const [loading, setLoading] = useState(false)
   const [selectedPDF, setSelectedPDF] = useState<File | null>(null)
   const [loadingStage, setLoadingStage] = useState<string>('')
   const [progress, setProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [userPlan, setUserPlan] = useState<SubscriptionPlan>('basic');
+
+  // Get user's subscription plan
+  useEffect(() => {
+    if (isLoaded && user && has) {
+      const { plan } = getUserPlanAndLimits(has);
+      setUserPlan(plan);
+    }
+  }, [user, isLoaded, has]);
+
+  // Create dynamic form schema based on user's plan
+  const createFormSchema = (maxDuration: number) => {
+    return z.object({
+      name: z.string().min(1, { message: 'Companion name is required' }),
+      subject: z.string().min(1, { message: 'Subject is required' }),
+      topic: z.string().min(1, { message: 'Topic is required' }),
+      voice: z.string().min(1, { message: 'Voice is required' }),
+      style: z.string().min(1, { message: 'Style is required' }),
+      duration: z.coerce.number()
+        .min(1, { message: 'Duration is required' })
+        .max(maxDuration, { message: `Duration cannot exceed ${maxDuration} minutes for your current plan` }),
+      language: z.string().min(1, { message: 'Language is required' }),
+    });
+  };
+
+  const currentPlanLimits = PLAN_LIMITS[userPlan];
+  const dynamicFormSchema = createFormSchema(currentPlanLimits.maxDuration);
 
   const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(dynamicFormSchema),
     defaultValues: {
       name: '',
       subject: '',
       topic: '',
       voice: '',
       style: '',
-      duration: 15,
+      duration: Math.min(15, currentPlanLimits.maxDuration), // Default to 15 or max allowed
       language: '',
     },
   })
@@ -80,6 +163,14 @@ const CompanionForm = () => {
       form.setValue('topic', `Content from ${pdfName}`);
     }
   }, [selectedPDF, form]);
+
+  // Update form validation when plan changes
+  useEffect(() => {
+    const currentDuration = form.getValues('duration');
+    if (currentDuration > currentPlanLimits.maxDuration) {
+      form.setValue('duration', currentPlanLimits.maxDuration);
+    }
+  }, [userPlan, currentPlanLimits.maxDuration, form]);
 
   // Simulate loading stages for better UX
   const simulateLoadingStages = async () => {
@@ -105,8 +196,14 @@ const CompanionForm = () => {
       setError(null)
       setProgress(0)
       
+      // Double-check duration limit on submission
+      if (values.duration > currentPlanLimits.maxDuration) {
+        throw new Error(`Duration cannot exceed ${currentPlanLimits.maxDuration} minutes for your ${currentPlanLimits.name}`);
+      }
+      
       console.log('🚀 Starting companion creation process...')
       console.log('📝 Form values:', values)
+      console.log('👤 User plan:', userPlan)
       console.log('📄 Selected PDF:', selectedPDF ? {
         name: selectedPDF.name,
         size: `${(selectedPDF.size / 1024 / 1024).toFixed(2)}MB`,
@@ -119,7 +216,8 @@ const CompanionForm = () => {
       // Start the actual companion creation
       const creationPromise = createCompanionWithPDF({
         ...values,
-        pdfFile: selectedPDF || undefined
+        pdfFile: selectedPDF || undefined,
+        userPlan 
       })
 
       // Wait for both to complete
@@ -147,12 +245,57 @@ const CompanionForm = () => {
     }
   }
 
+  // Generate duration options based on user's plan
+  const getDurationOptions = () => {
+    const options = [];
+    for (let i = 5; i <= currentPlanLimits.maxDuration; i += 5) {
+      options.push(i);
+    }
+    // Always include the exact max duration if it's not already in the list
+    if (!options.includes(currentPlanLimits.maxDuration)) {
+      options.push(currentPlanLimits.maxDuration);
+    }
+    return options.sort((a, b) => a - b);
+  };
+
+  if (!isLoaded) {
+    return (
+      <div className="max-w-2xl mx-auto p-6 flex items-center justify-center">
+        <Loader2 className="animate-spin h-8 w-8 text-blue-600" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto p-6">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold">Create Your AI Companion</h1>
         <p className="text-gray-500 mt-2">Build a personalized tutor for your learning journey</p>
+        
+        {/* Plan Badge */}
+        <div className="mt-4 flex items-center justify-center">
+          <Badge variant="outline" className={`${currentPlanLimits.color} border-current`}>
+            <span className="mr-2">{currentPlanLimits.icon}</span>
+            {currentPlanLimits.name}
+          </Badge>
+        </div>
       </div>
+
+      {/* Plan Limits Info */}
+      <Alert className="mb-6 border-blue-200 bg-blue-50">
+        <AlertDescription className="text-blue-800">
+          <div className="flex items-center justify-between">
+            <span>
+              Your plan allows sessions up to <strong>{currentPlanLimits.maxDuration} minutes</strong>
+            </span>
+            {userPlan === 'basic' && (
+              <Button variant="link" size="sm" className="text-blue-600 p-0 h-auto">
+                Upgrade Plan
+              </Button>
+            )}
+          </div>
+        </AlertDescription>
+      </Alert>
 
       {/* Loading Progress */}
       {loading && (
@@ -332,9 +475,43 @@ const CompanionForm = () => {
               name="duration"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Session Duration (minutes)</FormLabel>
+                  <FormLabel className="flex items-center gap-2">
+                    Session Duration (minutes)
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          <div className={`${currentPlanLimits.color}`}>
+                            {currentPlanLimits.icon}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{currentPlanLimits.name}: Up to {currentPlanLimits.maxDuration} minutes</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </FormLabel>
                   <FormControl>
-                    <Input type="number" min={1} max={60} disabled={loading} {...field} />
+                    <Select 
+                      onValueChange={(value) => field.onChange(parseInt(value))} 
+                      value={field.value?.toString()} 
+                      disabled={loading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getDurationOptions().map((duration) => (
+                          <SelectItem key={duration} value={duration.toString()}>
+                            {duration} minutes
+                            {duration === currentPlanLimits.maxDuration && (
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                Max
+                              </Badge>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
