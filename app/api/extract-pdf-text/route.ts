@@ -88,13 +88,13 @@ async function extractTextBasic(buffer: Buffer): Promise<string> {
     while ((textMatch = textRegex.exec(streamContent)) !== null) {
       const textContent = textMatch[1];
       if (textContent && textContent.length > 0) {
-        // Decode basic PDF text encoding
+        // Decode basic PDF text encoding - FIXED REGEX
         const decodedText = textContent
           .replace(/\\n/g, '\n')
           .replace(/\\r/g, '\r')
           .replace(/\\t/g, '\t')
-          .replace(/\\(/g, '(')
-          .replace(/\\)/g, ')')
+          .replace(/\\\(/g, '(')  // Fixed: escaped the opening parenthesis
+          .replace(/\\\)/g, ')')  // Fixed: escaped the closing parenthesis
           .replace(/\\\\/g, '\\');
         
         text += decodedText + ' ';
