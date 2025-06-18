@@ -12,8 +12,14 @@ import { Button } from "@/components/ui/button";
 const CompanionsLibrary = async ({ searchParams }: SearchParams) => {
   const { userId } = await auth();
   const filters = await searchParams;
-  const subject = filters.subject ? filters.subject: '';
-  const topic = filters.topic ? filters.topic: '';
+  
+  // Handle string | string[] conversion
+  const subject = Array.isArray(filters.subject) 
+    ? filters.subject[0] || '' 
+    : filters.subject || '';
+  const topic = Array.isArray(filters.topic) 
+    ? filters.topic[0] || '' 
+    : filters.topic || '';
 
   const companions = await getAllCompanions({ subject, topic });
 
