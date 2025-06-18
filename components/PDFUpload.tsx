@@ -13,42 +13,42 @@ interface PDFUploadProps {
   disabled?: boolean;
 }
 
-export const PDFUpload = ({ 
-  onFileSelect, 
-  selectedFile, 
+export const PDFUpload = ({
+  onFileSelect,
+  selectedFile,
   maxSize = 1,
-  disabled = false 
+  disabled = false,
 }: PDFUploadProps) => {
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const validateFile = (file: File) => {
+  const validateFile = useCallback((file: File) => {
     if (file.type !== 'application/pdf') {
       setError('Only PDF files are allowed');
       return false;
     }
-    
+
     if (file.size > maxSize * 1024 * 1024) {
       setError(`File size must be less than ${maxSize}MB`);
       return false;
     }
-    
+
     setError(null);
     return true;
-  };
+  }, [maxSize]);
 
   const handleFile = useCallback((file: File) => {
     if (validateFile(file)) {
       onFileSelect(file);
     }
-  }, [onFileSelect, maxSize]);
+  }, [onFileSelect, validateFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    
+
     if (disabled) return;
-    
+
     const files = Array.from(e.dataTransfer.files);
     if (files.length > 0) {
       handleFile(files[0]);
@@ -81,13 +81,15 @@ export const PDFUpload = ({
   return (
     <div className="space-y-4">
       {/* Upload Area */}
-      <Card className={`border-2 border-dashed transition-colors ${
-        dragActive 
-          ? 'border-blue-500 bg-blue-50' 
-          : selectedFile 
-            ? 'border-green-500 bg-green-50' 
-            : 'border-gray-300 hover:border-gray-400'
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
+      <Card
+        className={`border-2 border-dashed transition-colors ${
+          dragActive
+            ? 'border-blue-500 bg-blue-50'
+            : selectedFile
+              ? 'border-green-500 bg-green-50'
+              : 'border-gray-300 hover:border-gray-400'
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      >
         <CardContent className="p-8">
           <div
             className="text-center"
