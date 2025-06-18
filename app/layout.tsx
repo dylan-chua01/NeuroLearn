@@ -13,7 +13,7 @@ export const metadata = {
   title: 'NeuroLearn',
   description: 'Your AI-powered learning companion',
   icons: {
-    icon: '/icons/neuroLearn_logo.png',
+    icon: '/icons/favicon.ico',
   },
 };
 
