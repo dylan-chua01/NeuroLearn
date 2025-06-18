@@ -86,7 +86,11 @@ const CompanionComponent = ({
 
   useEffect(() => {
     if (lottieRef.current) {
-      isSpeaking ? lottieRef.current.play() : lottieRef.current.stop();
+      if (isSpeaking) {
+        lottieRef.current.play();
+      } else {
+        lottieRef.current.stop();
+      }
     }
   }, [isSpeaking]);
 
@@ -125,25 +129,20 @@ const CompanionComponent = ({
 
     const onMessage = (...args: unknown[]) => {
       const message = args[0] as Message;
-      
-      if (message?.type === 'transcript' && message.transcriptType === 'final') {
+      if (message.type === 'transcript' && message.transcriptType === 'final') {
         const newMessage = { role: message.role, content: message.transcript || '' };
         setMessages((prev) => [newMessage, ...prev]);
       }
     };
+
     const onSpeechStart = () => setIsSpeaking(true);
     const onSpeechEnd = () => setIsSpeaking(false);
-
-    const onError = () => {
-      setSessionHistoryId(null);
-    };
 
     const vapiInstance = vapi as unknown as VapiInstance;
 
     vapiInstance.on('call-start', onCallStart);
     vapiInstance.on('call-end', onCallEnd);
     vapiInstance.on('message', onMessage);
-    vapiInstance.on('error', onError);
     vapiInstance.on('speech-start', onSpeechStart);
     vapiInstance.on('speech-end', onSpeechEnd);
 
@@ -151,7 +150,6 @@ const CompanionComponent = ({
       vapiInstance.off('call-start', onCallStart);
       vapiInstance.off('call-end', onCallEnd);
       vapiInstance.off('message', onMessage);
-      vapiInstance.off('error', onError);
       vapiInstance.off('speech-start', onSpeechStart);
       vapiInstance.off('speech-end', onSpeechEnd);
     };
@@ -177,20 +175,21 @@ const CompanionComponent = ({
         serverMessages: []
       };
 
+      const assistantConfig = configureAssistant(
+        voice as 'male' | 'female',
+        style as 'casual' | 'formal',
+        language as 'en' | 'zh' | 'ms',
+        topic,
+        subject,
+        pdf_content,
+        pdf_name
+      );
+
       const vapiInstance = vapi as unknown as VapiInstance;
       await vapiInstance.start(
-        configureAssistant(
-          voice as 'male' | 'female',
-          style as 'casual' | 'formal',
-          language as 'en' | 'zh' | 'ms',
-          topic,
-          subject,
-          pdf_content,
-          pdf_name
-        ) as Record<string, unknown>,
+        assistantConfig as Record<string, unknown>,
         assistantOverrides
       );
-      
     } catch (error) {
       console.error('Failed to start call:', error);
       setCallStatus(CallStatus.INACTIVE);
@@ -212,11 +211,21 @@ const CompanionComponent = ({
             <div className={cn(
               'absolute transition-opacity duration-1000',
               callStatus === CallStatus.FINISHED || callStatus === CallStatus.INACTIVE ? 'opacity-100' : 'opacity-0',
-              callStatus === CallStatus.CONNECTING && 'opacity-100 animate-pulse')}>
-              <Image src={`/icons/${subject}.svg`} alt={subject} width={150} height={150} className="max-sm:w-fit" />
+              callStatus === CallStatus.CONNECTING && 'opacity-100 animate-pulse'
+            )}>
+              <Image 
+                src={`/icons/${subject}.svg`} 
+                alt={subject} 
+                width={150} 
+                height={150} 
+                className="max-sm:w-fit" 
+              />
             </div>
 
-            <div className={cn('absolute transition-opacity duration-1000', callStatus === CallStatus.ACTIVE ? 'opacity-100' : 'opacity-0')}>
+            <div className={cn(
+              'absolute transition-opacity duration-1000', 
+              callStatus === CallStatus.ACTIVE ? 'opacity-100' : 'opacity-0'
+            )}>
               <Lottie
                 lottieRef={lottieRef}
                 animationData={soundwaves}
@@ -230,13 +239,30 @@ const CompanionComponent = ({
 
         <div className="user-section">
           <div className="user-avatar">
-            <Image src={userImage} alt={`${userName} Image`} width={130} height={130} className="rounded-lg" />
+            <Image 
+              src={userImage} 
+              alt={`${userName} Image`} 
+              width={130} 
+              height={130} 
+              className="rounded-lg" 
+            />
             <p className="font-bold text-2xl">{userName}</p>
           </div>
 
-          <button className="btn-mic" onClick={toggleMicrophone} disabled={callStatus !== CallStatus.ACTIVE}>
-            <Image src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'} alt={`${userName} mic`} width={36} height={36} />
-            <p className="max-sm:hidden">{isMuted ? 'Turn on microphone' : 'Turn off microphone'}</p>
+          <button 
+            className="btn-mic" 
+            onClick={toggleMicrophone} 
+            disabled={callStatus !== CallStatus.ACTIVE}
+          >
+            <Image 
+              src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'} 
+              alt={`${userName} mic`} 
+              width={36} 
+              height={36} 
+            />
+            <p className="max-sm:hidden">
+              {isMuted ? 'Turn on microphone' : 'Turn off microphone'}
+            </p>
           </button>
 
           <button
@@ -245,15 +271,20 @@ const CompanionComponent = ({
               callStatus === CallStatus.ACTIVE ? 'bg-red-700' : 'bg-primary',
               callStatus === CallStatus.CONNECTING && 'animate-pulse'
             )}
-            onClick={callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall}>
-            {callStatus === CallStatus.ACTIVE ? 'End Session' : callStatus === CallStatus.CONNECTING ? 'Connecting' : 'Start Session'}
+            onClick={callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall}
+          >
+            {callStatus === CallStatus.ACTIVE 
+              ? 'End Session' 
+              : callStatus === CallStatus.CONNECTING 
+                ? 'Connecting' 
+                : 'Start Session'}
           </button>
         </div>
       </section>
 
       <section className="transcript">
         <div className="transcript-message no-scrollbar">
-          {messages.map((message, index) =>
+          {messages.map((message, index) => (
             message.role === 'assistant' ? (
               <p key={index} className="max-sm:text-sm">
                 {name.split(' ')[0].replace(/[.]/g, '')}: {message.content}
@@ -263,7 +294,7 @@ const CompanionComponent = ({
                 {userName}: {message.content}
               </p>
             )
-          )}
+          ))}
         </div>
         <div className="transcript-fade" />
       </section>

@@ -480,7 +480,8 @@ export const createCompanionWithPDF = async (
       created_at: new Date().toISOString()
     };
     
-    const { pdfFile, userPlan, ...cleanCompanionData } = companionData;
+    // Remove properties that shouldn't be stored in the database
+    const { pdfFile: _pdfFile, userPlan: _userPlan, ...cleanCompanionData } = companionData;
     
     const { data, error } = await supabaseClient
       .from("companions")
