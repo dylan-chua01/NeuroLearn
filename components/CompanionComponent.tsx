@@ -1,305 +1,223 @@
 'use client';
 
-import { cn, configureAssistant, getSubjectColor } from '@/lib/utils';
+import { cn, configureAssistant, getSubjectColor } from '@/lib/utils'
 import { vapi } from '@/lib/vapi.sd';
 import Lottie, { LottieRefCurrentProps } from 'lottie-react';
 import Image from 'next/image';
-import React, { useEffect, useRef, useState } from 'react';
-import soundwaves from '@/constants/soundwaves.json';
+import React, { useEffect, useRef, useState } from 'react'
+import soundwaves from '@/constants/soundwaves.json'
 import { createSessionHistory, updateSessionHistory } from '@/lib/actions/companion.actions';
-
-interface VapiCall {
-  id?: string;
-}
-
-interface VapiInstance {
-  call?: VapiCall;
-  callId?: string;
-  getCallId?: () => Promise<string> | string;
-  isMuted: () => boolean;
-  setMuted: (muted: boolean) => void;
-  start: (
-    assistant: Record<string, unknown>,
-    overrides: {
-      variableValues: Record<string, string>;
-      clientMessages: string[];
-      serverMessages: string[];
-    }
-  ) => Promise<unknown>;
-  stop: () => void;
-  on: (event: string, callback: (...args: unknown[]) => void) => void;
-  off: (event: string, callback: (...args: unknown[]) => void) => void;
-}
-
-interface Message {
-  type: string;
-  transcriptType?: string;
-  role: string;
-  transcript?: string;
-}
-
-interface SavedMessage {
-  role: string;
-  content: string;
-}
-
-interface CompanionComponentProps {
-  companionId: string;
-  subject: string;
-  topic: string;
-  name: string;
-  userName: string;
-  userImage: string;
-  style: string;
-  voice: string;
-  language: string;
-  pdf_content?: string;
-  pdf_name?: string;
-}
+import { AssistantOverrides } from '@vapi-ai/web/dist/api';
 
 enum CallStatus {
-  INACTIVE = 'INACTIVE',
-  CONNECTING = 'CONNECTING',
-  ACTIVE = 'ACTIVE',
-  FINISHED = 'FINISHED'
+    INACTIVE = 'INACTIVE',
+    CONNECTING = 'CONNECTING',
+    ACTIVE = 'ACTIVE',
+    FINISHED = 'FINISHED'
 }
 
 const CompanionComponent = ({
-  companionId,
-  subject,
-  topic,
-  name,
-  userName,
-  userImage,
-  style,
-  voice,
-  language,
-  pdf_content,
-  pdf_name
+    companionId, subject, topic, name, userName, userImage,
+    style, voice, language, pdf_content, pdf_name
 }: CompanionComponentProps) => {
-  const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
-  const [messages, setMessages] = useState<SavedMessage[]>([]);
-  const [sessionHistoryId, setSessionHistoryId] = useState<string | null>(null);
-  const lottieRef = useRef<LottieRefCurrentProps>(null);
+    const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isMuted, setIsMuted] = useState(false);
+    const [messages, setMessages] = useState<SavedMessage[]>([]);
+    const [vapiCallId, setVapiCallId] = useState<string | null>(null);
+    const [sessionHistoryId, setSessionHistoryId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (lottieRef.current) {
-      if (isSpeaking) {
-        lottieRef.current.play();
-      } else {
-        lottieRef.current.stop();
-      }
-    }
-  }, [isSpeaking]);
+    const lottieRef = useRef<LottieRefCurrentProps>(null);
 
-  useEffect(() => {
-    const onCallStart = () => {
-      setCallStatus(CallStatus.ACTIVE);
-
-      const getCallId = async () => {
-        try {
-          const vapiInstance = vapi as unknown as VapiInstance;
-          let callId: string | undefined;
-
-          if (vapiInstance.call?.id) {
-            callId = vapiInstance.call.id;
-          } else if (vapiInstance.callId) {
-            callId = vapiInstance.callId;
-          } else if (vapiInstance.getCallId) {
-            callId = await vapiInstance.getCallId();
-          }
-
-          if (callId && sessionHistoryId) {
-            await updateSessionHistory(sessionHistoryId, callId);
-          }
-        } catch (error) {
-          console.error('Error getting call ID:', error);
+    useEffect(() => {
+        if (lottieRef) {
+            isSpeaking ? lottieRef.current?.play() : lottieRef.current?.stop();
         }
-      };
+    }, [isSpeaking, lottieRef]);
 
-      getCallId();
-    };
+    useEffect(() => {
+        const onCallStart = () => {
+            setCallStatus(CallStatus.ACTIVE);
 
-    const onCallEnd = () => {
-      setCallStatus(CallStatus.FINISHED);
-      setSessionHistoryId(null);
-    };
+            setTimeout(() => {
+                try {
+                    const callId = (vapi as any)?.call?.id || (vapi as any)?.callId;
 
-    const onMessage = (...args: unknown[]) => {
-      const message = args[0] as Message;
-      if (message.type === 'transcript' && message.transcriptType === 'final') {
-        const newMessage = { role: message.role, content: message.transcript || '' };
-        setMessages((prev) => [newMessage, ...prev]);
-      }
-    };
+                    if (callId) {
+                        setVapiCallId(callId);
+                        if (sessionHistoryId) {
+                            updateSessionHistory(sessionHistoryId, callId)
+                                .then(() => console.log('Session history updated with call ID:', callId))
+                                .catch(err => console.error("Failed to update session with call ID:", err));
+                        }
+                    } else {
+                        const altCallId = typeof (vapi as any).getCallId === 'function'
+                            ? (vapi as any).getCallId()
+                            : null;
 
-    const onSpeechStart = () => setIsSpeaking(true);
-    const onSpeechEnd = () => setIsSpeaking(false);
+                        if (altCallId) {
+                            setVapiCallId(altCallId);
+                            if (sessionHistoryId) {
+                                updateSessionHistory(sessionHistoryId, altCallId)
+                                    .then(() => console.log('Session history updated with alt call ID:', altCallId))
+                                    .catch(err => console.error("Failed to update session with alt call ID:", err));
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error getting call ID:', error);
+                }
+            }, 100);
+        };
 
-    const vapiInstance = vapi as unknown as VapiInstance;
+        const onCallEnd = async () => {
+            setCallStatus(CallStatus.FINISHED);
+            const callId = (vapi as any)?.call?.id || (vapi as any)?.callId;
+            if (callId && sessionHistoryId) {
+                try {
+                    await updateSessionHistory(sessionHistoryId, callId);
+                } catch (err) {
+                    console.error("❌ Failed to update session with call ID on call end:", err);
+                }
+            }
+            setVapiCallId(null);
+            setSessionHistoryId(null);
+        }
 
-    vapiInstance.on('call-start', onCallStart);
-    vapiInstance.on('call-end', onCallEnd);
-    vapiInstance.on('message', onMessage);
-    vapiInstance.on('speech-start', onSpeechStart);
-    vapiInstance.on('speech-end', onSpeechEnd);
+        const onMessage = (message: Message) => {
+            if (message.type === 'transcript' && message.transcriptType === 'final') {
+                const newMessage = { role: message.role, content: message.transcript };
+                setMessages(prev => [newMessage, ...prev]);
+            }
+        };
 
-    return () => {
-      vapiInstance.off('call-start', onCallStart);
-      vapiInstance.off('call-end', onCallEnd);
-      vapiInstance.off('message', onMessage);
-      vapiInstance.off('speech-start', onSpeechStart);
-      vapiInstance.off('speech-end', onSpeechEnd);
-    };
-  }, [companionId, sessionHistoryId]);
+        const onSpeechStart = () => setIsSpeaking(true);
+        const onSpeechEnd = () => setIsSpeaking(false);
+        const onError = (error: Error) => {
+            console.log('Vapi Error:', error);
+            setVapiCallId(null);
+            setSessionHistoryId(null);
+        };
 
-  const toggleMicrophone = () => {
-    const vapiInstance = vapi as unknown as VapiInstance;
-    const muted = vapiInstance.isMuted();
-    vapiInstance.setMuted(!muted);
-    setIsMuted(!muted);
-  };
+        vapi.on('call-start', onCallStart);
+        vapi.on('call-end', onCallEnd);
+        vapi.on('message', onMessage);
+        vapi.on('error', onError);
+        vapi.on('speech-start', onSpeechStart);
+        vapi.on('speech-end', onSpeechEnd);
 
-  const handleCall = async () => {
-    setCallStatus(CallStatus.CONNECTING);
+        return () => {
+            vapi.off('call-start', onCallStart);
+            vapi.off('call-end', onCallEnd);
+            vapi.off('message', onMessage);
+            vapi.off('error', onError);
+            vapi.off('speech-start', onSpeechStart);
+            vapi.off('speech-end', onSpeechEnd);
+        };
+    }, [companionId, sessionHistoryId]);
 
-    try {
-      const sessionData = await createSessionHistory(companionId);
-      setSessionHistoryId(sessionData.id);
-
-      const assistantOverrides = {
-        variableValues: { subject, topic, style },
-        clientMessages: ['transcript'],
-        serverMessages: []
-      };
-
-      const assistantConfig = configureAssistant(
-        voice as 'male' | 'female',
-        style as 'casual' | 'formal',
-        language as 'en' | 'zh' | 'ms',
-        topic,
-        subject,
-        pdf_content,
-        pdf_name
-      );
-
-      const vapiInstance = vapi as unknown as VapiInstance;
-      await vapiInstance.start(
-        assistantConfig as Record<string, unknown>,
-        assistantOverrides
-      );
-    } catch (error) {
-      console.error('Failed to start call:', error);
-      setCallStatus(CallStatus.INACTIVE);
-      setSessionHistoryId(null);
+    const toggleMicrophone = () => {
+        const isMuted = vapi.isMuted();
+        vapi.setMuted(!isMuted);
+        setIsMuted(!isMuted);
     }
-  };
 
-  const handleDisconnect = () => {
-    setCallStatus(CallStatus.FINISHED);
-    const vapiInstance = vapi as unknown as VapiInstance;
-    vapiInstance.stop();
-  };
+    const handleCall = async () => {
+        setCallStatus(CallStatus.CONNECTING);
 
-  return (
-    <section className="flex flex-col h-[70vh]">
-      <section className="flex gap-8 max-sm:flex-col">
-        <div className="companion-section">
-          <div className="companion-avatar" style={{ backgroundColor: getSubjectColor(subject) }}>
-            <div className={cn(
-              'absolute transition-opacity duration-1000',
-              callStatus === CallStatus.FINISHED || callStatus === CallStatus.INACTIVE ? 'opacity-100' : 'opacity-0',
-              callStatus === CallStatus.CONNECTING && 'opacity-100 animate-pulse'
-            )}>
-              <Image 
-                src={`/icons/${subject}.svg`} 
-                alt={subject} 
-                width={150} 
-                height={150} 
-                className="max-sm:w-fit" 
-              />
-            </div>
+        try {
+            const sessionData = await createSessionHistory(companionId);
+            setSessionHistoryId(sessionData.id);
 
-            <div className={cn(
-              'absolute transition-opacity duration-1000', 
-              callStatus === CallStatus.ACTIVE ? 'opacity-100' : 'opacity-0'
-            )}>
-              <Lottie
-                lottieRef={lottieRef}
-                animationData={soundwaves}
-                autoplay={false}
-                className="companion-lottie"
-              />
-            </div>
-          </div>
-          <p className="font-bold text-2xl">{name}</p>
-        </div>
+            const assistantOverrides: AssistantOverrides = {
+              variableValues: { subject, topic, style },
+          };
 
-        <div className="user-section">
-          <div className="user-avatar">
-            <Image 
-              src={userImage} 
-              alt={`${userName} Image`} 
-              width={130} 
-              height={130} 
-              className="rounded-lg" 
-            />
-            <p className="font-bold text-2xl">{userName}</p>
-          </div>
+            const response = await vapi.start(
+                configureAssistant(
+                    voice as "male" | "female",
+                    style as "casual" | "formal",
+                    language as "en" | "zh" | "ms",
+                    topic,
+                    subject,
+                    pdf_content,
+                    pdf_name
+                ),
+                assistantOverrides
+            );
 
-          <button 
-            className="btn-mic" 
-            onClick={toggleMicrophone} 
-            disabled={callStatus !== CallStatus.ACTIVE}
-          >
-            <Image 
-              src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'} 
-              alt={`${userName} mic`} 
-              width={36} 
-              height={36} 
-            />
-            <p className="max-sm:hidden">
-              {isMuted ? 'Turn on microphone' : 'Turn off microphone'}
-            </p>
-          </button>
+            let callId: string | undefined;
+            if (response?.id) {
+                callId = response.id;
+            } else if ((vapi as any)?.call?.id) {
+                callId = (vapi as any).call.id;
+            } else if (typeof (vapi as any).getCallId === 'function') {
+                callId = await (vapi as any).getCallId();
+            }
 
-          <button
-            className={cn(
-              'rounded-lg py-2 cursor-pointer transition-colors w-full text-white',
-              callStatus === CallStatus.ACTIVE ? 'bg-red-700' : 'bg-primary',
-              callStatus === CallStatus.CONNECTING && 'animate-pulse'
-            )}
-            onClick={callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall}
-          >
-            {callStatus === CallStatus.ACTIVE 
-              ? 'End Session' 
-              : callStatus === CallStatus.CONNECTING 
-                ? 'Connecting' 
-                : 'Start Session'}
-          </button>
-        </div>
-      </section>
+            if (callId) {
+                setVapiCallId(callId);
+                await updateSessionHistory(sessionData.id, callId);
+            } else {
+                console.warn('Call ID not found immediately, will try in onCallStart');
+            }
+        } catch (error) {
+            console.error('Failed to start call:', error);
+            setCallStatus(CallStatus.INACTIVE);
+            setSessionHistoryId(null);
+        }
+    };
 
-      <section className="transcript">
-        <div className="transcript-message no-scrollbar">
-          {messages.map((message, index) => (
-            message.role === 'assistant' ? (
-              <p key={index} className="max-sm:text-sm">
-                {name.split(' ')[0].replace(/[.]/g, '')}: {message.content}
-              </p>
-            ) : (
-              <p key={index} className="text-primary max-sm:text-sm">
-                {userName}: {message.content}
-              </p>
-            )
-          ))}
-        </div>
-        <div className="transcript-fade" />
-      </section>
-    </section>
-  );
-};
+    const handleDisconnect = async () => {
+        setCallStatus(CallStatus.FINISHED);
+        vapi.stop();
+    }
+
+    return (
+        <section className='flex flex-col h-[70vh]'>
+            <section className='flex gap-8 max-sm:flex-col'>
+                <div className='companion-section'>
+                    <div className='companion-avatar' style={{ backgroundColor: getSubjectColor(subject) }}>
+                        <div className={cn('absolute transition-opacity duration-1000', callStatus === CallStatus.FINISHED || callStatus === CallStatus.INACTIVE ? 'opacity-100' : 'opacity-0', callStatus === CallStatus.CONNECTING && 'opacity-100 animate-pulse')}>
+                            <Image src={`/icons/${subject}.svg`} alt={subject} width={150} height={150} className='max-sm:w-fit' />
+                        </div>
+                        <div className={cn('absolute transition-opacity duration-1000', callStatus === CallStatus.ACTIVE ? 'opacity-100' : 'opacity-0')}>
+                            <Lottie lottieRef={lottieRef} animationData={soundwaves} autoplay={false} className='companion-lottie' />
+                        </div>
+                    </div>
+                    <p className='font-bold text-2xl'>{name}</p>
+                </div>
+
+                <div className='user-section'>
+                    <div className='user-avatar'>
+                        <Image src={userImage} alt={`${userName} Image`} width={130} height={130} className='rounded-lg' />
+                        <p className='font-bold text-2xl'>{userName}</p>
+                    </div>
+                    <button className='btn-mic' onClick={toggleMicrophone} disabled={callStatus !== CallStatus.ACTIVE}>
+                        <Image src={isMuted ? '/icons/mic-off.svg' : '/icons/mic-on.svg'} alt={`${userName} mic`} width={36} height={36} />
+                        <p className='max-sm:hidden'>{isMuted ? 'Turn on microphone' : 'Turn off microphone'}</p>
+                    </button>
+                    <button className={cn('rounded-lg py-2 cursor-pointer transition-colors w-full text-white', callStatus === CallStatus.ACTIVE ? 'bg-red-700' : 'bg-primary', callStatus === CallStatus.CONNECTING && 'animate-pulse')} onClick={callStatus === CallStatus.ACTIVE ? handleDisconnect : handleCall}>
+                        {callStatus === CallStatus.ACTIVE ? "End Session" : callStatus === CallStatus.CONNECTING ? 'Connecting' : 'Start Session'}
+                    </button>
+                </div>
+            </section>
+
+            <section className='transcript'>
+                <div className='transcript-message no-scrollbar'>
+                    {messages.map((message, index) => (
+                        <p key={index} className={message.role === 'assistant' ? 'max-sm:text-sm' : 'text-primary max-sm:text-sm'}>
+                            {message.role === 'assistant'
+                                ? `${name.split(' ')[0].replace(/[.]/g, '')}: ${message.content}`
+                                : `${userName}: ${message.content}`
+                            }
+                        </p>
+                    ))}
+                </div>
+                <div className='transcript-fade' />
+            </section>
+        </section>
+    );
+}
 
 export default CompanionComponent;

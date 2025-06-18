@@ -27,22 +27,22 @@ export const voices = {
   },
   zh: {
     male: {
-      casual: "fQj4gJSexpu8RDE2Ii5m", // Yu (Chinese)
-      formal: "4VZIsMPtgggwNg7OXbPY", // James Gao
+      casual: "TxGEqnHWrfWFTfGW9XjX", // Josh (works with multilingual)
+      formal: "VR6AewLTigWG4xSOukaG", // Arnold (works with multilingual)
     },
     female: {
-      casual: "bhJUNIXWQQ94l8eI2VUf", // Amy
-      formal: "hkfHEbBvdQFNX4uWHqRF", // Stacy
+      casual: "21m00Tcm4TlvDq8ikWAM", // Rachel (works with multilingual)
+      formal: "AZnzlk1XvdvUeBnXmlld", // Domi (works with multilingual)
     },
   },
    ms: {
     male: {
-      casual: "NpVSXJvYSdIbjOaMbShj", // Jawid
-      formal: "Wc6X61hTD7yucJMheuLN", // Faizal
+      casual: "TxGEqnHWrfWFTfGW9XjX", // Josh (works with multilingual)
+      formal: "VR6AewLTigWG4xSOukaG", // Arnold (works with multilingual)
     },
     female: {
-      casual: "UcqZLa941Kkt8ZhEEybf", // Afifah
-      formal: "UcqZLa941Kkt8ZhEEybf", // Afifah
+      casual: "21m00Tcm4TlvDq8ikWAM", // Rachel (works with multilingual)
+      formal: "AZnzlk1XvdvUeBnXmlld", // Domi (works with multilingual)
     },
   },
 } as const;
@@ -103,9 +103,10 @@ export const configureAssistant = (
   pdfContent?: string,
   pdfName?: string,
 ): CreateAssistantDTO => {
+  console.log("🔧 Configuring Assistant:", { voice, style, language, topic, subject, hasPdf: !!pdfContent, pdfName });
 
   const voiceId = getVoiceId(language, voice, style);
-
+  // @ts-ignore
   if (language !== "en" && Object.values(voices.en[voice]).includes(voiceId)) {
     console.warn("⚠️ Non-English language selected, but default English voice is used!");
   }
@@ -113,8 +114,10 @@ export const configureAssistant = (
   // FIXED: This will now properly handle "ms" language
   const langConfig = languageConfig[language] || languageConfig.en;
 
+  
   let firstMessage = langConfig.firstMessage;
   if (topic) {
+    // @ts-ignore
     firstMessage = firstMessage.replace("{{topic}}", topic);
   }
 
@@ -153,7 +156,7 @@ LANGUAGE ENFORCEMENT: Remember, you MUST follow the language instruction above. 
       voiceId,
       stability: 0.4,
       similarityBoost: 0.8,
-      speed: 0.85,
+      speed: 0.9,
       style: 0.5,
       useSpeakerBoost: true,
     },
@@ -186,10 +189,14 @@ LANGUAGE ENFORCEMENT: Remember, you MUST follow the language instruction above. 
     numWordsToInterruptAssistant: 2,
     
     // Add clientMessages configuration
+    // @ts-ignore
     clientMessages: ["transcript", "hang", "function-call"],
     
     // Add serverMessages configuration (empty for web calls typically)
+    // @ts-ignore
     serverMessages: [],
   };
+
+  console.log("✅ Assistant configured successfully", vapiAssistant);
   return vapiAssistant;
 };
