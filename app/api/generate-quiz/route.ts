@@ -1,7 +1,6 @@
 import { generateQuizFromSession } from '@/lib/actions/quiz.actions';
 import { NextRequest, NextResponse } from 'next/server';
 
-
 export async function GET(req: NextRequest) {
   const sessionId = req.nextUrl.searchParams.get('sessionId');
   if (!sessionId) {
@@ -11,7 +10,8 @@ export async function GET(req: NextRequest) {
   try {
     const quiz = await generateQuizFromSession(sessionId);
     return NextResponse.json(quiz);
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

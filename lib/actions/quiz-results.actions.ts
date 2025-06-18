@@ -51,7 +51,6 @@ export const submitQuizResults = async (submission: QuizSubmission) => {
       const percentage = (correctAnswers.length / submission.answers.length) * 100;
   
       // ✅ 6. Safely convert dates
-      const startedAt = new Date(submission.startedAt);
       const completedAt = new Date(submission.completedAt);
   
       // 7. Prepare data

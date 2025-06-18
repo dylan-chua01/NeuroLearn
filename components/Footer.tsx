@@ -63,7 +63,7 @@ const Footer = () => {
             <ul className='space-y-4'>
               {[
                 { name: 'AI Companions', href: '/companions' },
-                { name: 'Learning Paths', href: '/paths' },
+  
                 
                 
               ].map((link) => (
@@ -88,8 +88,6 @@ const Footer = () => {
             <ul className='space-y-4'>
               {[
                 { name: 'About Us', href: '/about' },
-                { name: 'Our Mission', href: '/mission' },
-                { name: 'Careers', href: '/careers' },
                 { name: 'Blog', href: '/blog' },
                 
               ].map((link) => (

@@ -27,22 +27,22 @@ export const voices = {
   },
   zh: {
     male: {
-      casual: "TxGEqnHWrfWFTfGW9XjX", // Josh (works with multilingual)
-      formal: "VR6AewLTigWG4xSOukaG", // Arnold (works with multilingual)
+      casual: "fQj4gJSexpu8RDE2Ii5m", // Yu (Chinese)
+      formal: "4VZIsMPtgggwNg7OXbPY", // James Gao
     },
     female: {
-      casual: "21m00Tcm4TlvDq8ikWAM", // Rachel (works with multilingual)
-      formal: "AZnzlk1XvdvUeBnXmlld", // Domi (works with multilingual)
+      casual: "bhJUNIXWQQ94l8eI2VUf", // Amy
+      formal: "hkfHEbBvdQFNX4uWHqRF", // Stacy
     },
   },
    ms: {
     male: {
-      casual: "TxGEqnHWrfWFTfGW9XjX", // Josh (works with multilingual)
-      formal: "VR6AewLTigWG4xSOukaG", // Arnold (works with multilingual)
+      casual: "NpVSXJvYSdIbjOaMbShj", // Jawid
+      formal: "Wc6X61hTD7yucJMheuLN", // Faizal
     },
     female: {
-      casual: "21m00Tcm4TlvDq8ikWAM", // Rachel (works with multilingual)
-      formal: "AZnzlk1XvdvUeBnXmlld", // Domi (works with multilingual)
+      casual: "UcqZLa941Kkt8ZhEEybf", // Afifah
+      formal: "UcqZLa941Kkt8ZhEEybf", // Afifah
     },
   },
 } as const;
@@ -103,7 +103,6 @@ export const configureAssistant = (
   pdfContent?: string,
   pdfName?: string,
 ): CreateAssistantDTO => {
-  console.log("🔧 Configuring Assistant:", { voice, style, language, topic, subject, hasPdf: !!pdfContent, pdfName });
 
   const voiceId = getVoiceId(language, voice, style);
 
@@ -154,7 +153,7 @@ LANGUAGE ENFORCEMENT: Remember, you MUST follow the language instruction above. 
       voiceId,
       stability: 0.4,
       similarityBoost: 0.8,
-      speed: 0.9,
+      speed: 0.85,
       style: 0.5,
       useSpeakerBoost: true,
     },
@@ -192,7 +191,5 @@ LANGUAGE ENFORCEMENT: Remember, you MUST follow the language instruction above. 
     // Add serverMessages configuration (empty for web calls typically)
     serverMessages: [],
   };
-
-  console.log("✅ Assistant configured successfully", vapiAssistant);
   return vapiAssistant;
 };

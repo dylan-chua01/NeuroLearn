@@ -78,7 +78,6 @@ export default function InteractiveQuizClient({ quiz }: InteractiveQuizClientPro
   
       const data = await response.json();
       if (!data.success) throw new Error(data.error);
-      console.log('Quiz submitted successfully:', data.result);
     } catch (error) {
       console.error('Failed to submit quiz:', error);
       // You might want to show an error message to the user here

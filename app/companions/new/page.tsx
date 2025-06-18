@@ -10,19 +10,12 @@ const NewCompanion = async () => {
   const { userId, has } = await auth();
   if (!userId) redirect('/sign-in');
 
-  const hasProLearner = has({ plan: 'pro_learner' });
-  const hasCoreLearner = has({ plan: 'core_learner' });
-  const hasBasic = has({ plan: 'basic' });
-  const has3CompanionLimit = has({ feature: "3_companion_limit" });
-  const has10CompanionLimit = has({ feature: "10_companion_limit" });
+  
 
   const [canCreateCompanion, canCreateActiveCompanion] = await Promise.all([
     newCompanionPermissions(),
     newActiveCompanionPermissions()
   ]);
-
-  console.log('canCreateCompanion:', canCreateCompanion);
-  console.log('canCreateActiveCompanion:', canCreateActiveCompanion);
 
   // For now, let's just use canCreateCompanion since that's working
   // You might need to fix newActiveCompanionPermissions() separately
@@ -44,8 +37,8 @@ const NewCompanion = async () => {
           <div className='cta-badge'>
             Upgrade your plan
           </div>
-          <h1>You've Reached Your Limit</h1>
-          <p>You've reached your companion limit for this month. Upgrade to create more companions and access premium features.</p>
+          <h1>You&apos;ve Reached Your Limit</h1>
+          <p>You&apos;ve reached your companion limit for this month. Upgrade to create more companions and access premium features.</p>
 
           <Link href="/subscription" className='btn-primary w-full justify-center'>
             Upgrade My Plan

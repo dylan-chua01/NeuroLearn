@@ -59,7 +59,6 @@ export const getCompanion = async (id: string) => {
     .eq('author', userId); // Only get if user owns it
 
   if(error) {
-    console.log(error);
     return null;
   }
 
@@ -348,15 +347,7 @@ export const uploadPDF = async (file: File, companionId?: string) => {
   
   const supabaseServiceRole = createServiceRoleClient();
   const supabaseClient = createSupabaseClient();
-  
-  console.log('📄 PDF Upload Started:', {
-    fileName: file.name,
-    fileSize: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
-    fileType: file.type,
-    userId: userId,
-    companionId: companionId || 'none'
-  });
-  
+
   // Enhanced file validation
   if (!file) {
     console.error('❌ No file provided');
@@ -379,21 +370,16 @@ export const uploadPDF = async (file: File, companionId?: string) => {
   }
   
   try {
-    console.log('🔄 Step 1: Converting file to ArrayBuffer...');
     const startTime = Date.now();
     
     // Convert File to ArrayBuffer for server-side processing
     const fileBuffer = await file.arrayBuffer();
     const conversionTime = Date.now() - startTime;
-    console.log(`✅ File converted to ArrayBuffer in ${conversionTime}ms, size: ${fileBuffer.byteLength} bytes`);
-    
-    console.log('🔄 Step 2: Extracting text from PDF...');
     const extractionStartTime = Date.now();
     
     // Extract text using PDF.js
     const extractedText = await extractTextFromPDF(fileBuffer);
     const extractionTime = Date.now() - extractionStartTime;
-    console.log(`✅ Text extracted in ${extractionTime}ms, length: ${extractedText.length} characters`);
     
     // Validate and potentially truncate extracted content
     let finalText = extractedText;
@@ -406,9 +392,7 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filename = `${userId}/${timestamp}-${sanitizedName}`;
-    
-    console.log('🔄 Step 3: Uploading to Supabase Storage...');
-    console.log('📁 Upload path:', filename);
+
     const uploadStartTime = Date.now();
     
     // Upload to Supabase Storage
@@ -426,14 +410,12 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     }
     
     const uploadTime = Date.now() - uploadStartTime;
-    console.log(`✅ File uploaded to storage in ${uploadTime}ms:`, uploadData.path);
     
     // Get public URL
     const { data: urlData } = supabaseServiceRole.storage
       .from('companion-pdfs')
       .getPublicUrl(uploadData.path);
     
-    console.log('📂 Public URL generated:', urlData.publicUrl);
     
     const result = {
       url: urlData.publicUrl,
@@ -446,7 +428,6 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     
     // Update companion if ID provided
     if (companionId) {
-      console.log('🔄 Step 4: Updating companion with PDF data...');
       const dbUpdateStartTime = Date.now();
       
       const { data: updateData, error: updateError } = await supabaseClient
@@ -465,7 +446,6 @@ export const uploadPDF = async (file: File, companionId?: string) => {
       if (updateError) {
         console.error('❌ Database update failed:', updateError);
         // Clean up uploaded file if database update fails
-        console.log('🧹 Cleaning up uploaded file due to database error...');
         await supabaseServiceRole.storage
           .from('companion-pdfs')
           .remove([uploadData.path]);
@@ -473,17 +453,9 @@ export const uploadPDF = async (file: File, companionId?: string) => {
       }
       
       const dbUpdateTime = Date.now() - dbUpdateStartTime;
-      console.log(`✅ Companion updated in ${dbUpdateTime}ms:`, updateData);
     }
     
     const totalTime = Date.now() - startTime;
-    console.log(`🎉 PDF processing completed in ${totalTime}ms total`);
-    console.log('📊 Performance breakdown:', {
-      fileConversion: `${conversionTime}ms`,
-      textExtraction: `${extractionTime}ms`,
-      storageUpload: `${uploadTime}ms`,
-      databaseUpdate: companionId ? `${Date.now() - startTime - conversionTime - extractionTime - uploadTime}ms` : 'skipped'
-    });
     
     return result;
     
@@ -544,7 +516,6 @@ export const removePDF = async (companionId: string) => {
   return true;
 };
 
-// Create companion with PDF support
 export const createCompanionWithPDF = async (
   formData: CreateCompanion & { pdfFile?: File }
 ) => {
@@ -553,16 +524,6 @@ export const createCompanionWithPDF = async (
   
   const supabaseClient = createSupabaseClient();
   
-  console.log('🚀 Creating companion with PDF support...');
-  console.log('👤 User ID:', author);
-  console.log('📝 Form data:', {
-    name: formData.name,
-    subject: formData.subject,
-    topic: formData.topic,
-    hasPDF: !!formData.pdfFile,
-    pdfName: formData.pdfFile?.name || 'none'
-  });
-  
   const overallStartTime = Date.now();
   
   try {
@@ -570,15 +531,13 @@ export const createCompanionWithPDF = async (
     
     // Handle PDF upload if provided
     if (formData.pdfFile) {
-      console.log('📄 Processing PDF file...');
       const pdfStartTime = Date.now();
       
       pdfData = await uploadPDF(formData.pdfFile);
       
       const pdfProcessingTime = Date.now() - pdfStartTime;
-      console.log(`✅ PDF processed successfully in ${pdfProcessingTime}ms`);
     } else {
-      console.log('📝 No PDF file provided, creating companion without PDF');
+
     }
     
     // Create companion with PDF data
@@ -592,18 +551,10 @@ export const createCompanionWithPDF = async (
       created_at: new Date().toISOString()
     };
     
-    // Remove pdfFile from data before inserting
+    // Remove fields that don't exist in the database schema
     delete (companionData as any).pdfFile;
+    delete (companionData as any).userPlan; // Remove userPlan field
     
-    console.log('🔄 Inserting companion into database...');
-    console.log('💾 Companion data summary:', {
-      name: companionData.name,
-      subject: companionData.subject,
-      topic: companionData.topic,
-      has_pdf: companionData.has_pdf,
-      pdf_content_length: companionData.pdf_content?.length || 0,
-      author: companionData.author
-    });
     
     const dbInsertStartTime = Date.now();
     
@@ -617,7 +568,7 @@ export const createCompanionWithPDF = async (
       
       // Clean up uploaded file if companion creation fails
       if (pdfData?.path) {
-        console.log('🧹 Cleaning up uploaded PDF due to companion creation failure...');
+        
         const supabaseServiceRole = createServiceRoleClient();
         await supabaseServiceRole.storage
           .from('companion-pdfs')
@@ -634,14 +585,6 @@ export const createCompanionWithPDF = async (
 
     const dbInsertTime = Date.now() - dbInsertStartTime;
     const totalTime = Date.now() - overallStartTime;
-    
-    console.log(`✅ Companion created successfully in ${dbInsertTime}ms`);
-    console.log(`🎉 Total process completed in ${totalTime}ms`);
-    console.log('🆔 Created companion:', {
-      id: data[0].id,
-      name: data[0].name,
-      has_pdf: data[0].has_pdf
-    });
     
     return data[0];
     

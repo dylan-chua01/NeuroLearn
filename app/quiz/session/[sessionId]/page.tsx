@@ -10,12 +10,6 @@ type QuizPageProps = {
   };
 };
 
-type QuizQuestion = {
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation?: string;
-};
 
 export default async function QuizPage({ params }: QuizPageProps) {
   const { sessionId } = await params;
@@ -32,7 +26,8 @@ export default async function QuizPage({ params }: QuizPageProps) {
     }
 
     return <InteractiveQuizClient quiz={{ ...quiz, id: quiz.id }} />;
-  } catch (err: any) {
-    return <ClientErrorWrapper message={err.message} />;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred';
+    return <ClientErrorWrapper message={message} />;
   }
 }

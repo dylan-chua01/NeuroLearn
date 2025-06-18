@@ -6,8 +6,7 @@ import { useForm } from "react-hook-form"
 import { useEffect, useState } from "react"
 import { redirect } from "next/navigation"
 import { useUser, useAuth } from "@clerk/nextjs"
-import { auth } from "@clerk/nextjs/server"
-import { Loader2, FileText, Upload, CheckCircle, Crown } from "lucide-react"
+import { Loader2, FileText, Upload, CheckCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -71,8 +70,13 @@ const PLAN_LIMITS: Record<SubscriptionPlan, PlanLimits> = {
   }
 };
 
+// Define the shape of Clerk's has function
+interface ClerkHasFunction {
+  (params: { plan?: string; feature?: string }): boolean;
+}
+
 // Helper function to get user's subscription plan and duration limits from Clerk auth
-const getUserPlanAndLimits = (has: any): { plan: SubscriptionPlan; maxDuration: number } => {
+const getUserPlanAndLimits = (has: ClerkHasFunction): { plan: SubscriptionPlan; maxDuration: number } => {
   if (has({ plan: 'pro_learner' })) {
     return { plan: 'pro_learner', maxDuration: 45 };
   } else if (has({ plan: 'core' })) {
@@ -85,17 +89,22 @@ const getUserPlanAndLimits = (has: any): { plan: SubscriptionPlan; maxDuration: 
   }
 };
 
-const formSchema = z.object({
-  name: z.string().min(1, { message: 'Companion name is required' }),
-  subject: z.string().min(1, { message: 'Subject is required' }),
-  topic: z.string().min(1, { message: 'Topic is required' }),
-  voice: z.string().min(1, { message: 'Voice is required' }),
-  style: z.string().min(1, { message: 'Style is required' }),
-  duration: z.coerce.number().min(1, { message: 'Duration is required' }),
-  language: z.string().min(1, { message: 'Language is required' }),
-})
+// Create dynamic form schema based on user's plan
+const createFormSchema = (maxDuration: number) => {
+  return z.object({
+    name: z.string().min(1, { message: 'Companion name is required' }),
+    subject: z.string().min(1, { message: 'Subject is required' }),
+    topic: z.string().min(1, { message: 'Topic is required' }),
+    voice: z.string().min(1, { message: 'Voice is required' }),
+    style: z.string().min(1, { message: 'Style is required' }),
+    duration: z.coerce.number()
+      .min(1, { message: 'Duration is required' })
+      .max(maxDuration, { message: `Duration cannot exceed ${maxDuration} minutes for your current plan` }),
+    language: z.string().min(1, { message: 'Language is required' }),
+  });
+};
 
-type FormData = z.infer<typeof formSchema>;
+type FormData = z.infer<ReturnType<typeof createFormSchema>>;
 
 // Loading stages for better UX
 const LOADING_STAGES = [
@@ -120,25 +129,10 @@ const CompanionForm = () => {
   // Get user's subscription plan
   useEffect(() => {
     if (isLoaded && user && has) {
-      const { plan } = getUserPlanAndLimits(has);
+      const { plan } = getUserPlanAndLimits(has as ClerkHasFunction);
       setUserPlan(plan);
     }
   }, [user, isLoaded, has]);
-
-  // Create dynamic form schema based on user's plan
-  const createFormSchema = (maxDuration: number) => {
-    return z.object({
-      name: z.string().min(1, { message: 'Companion name is required' }),
-      subject: z.string().min(1, { message: 'Subject is required' }),
-      topic: z.string().min(1, { message: 'Topic is required' }),
-      voice: z.string().min(1, { message: 'Voice is required' }),
-      style: z.string().min(1, { message: 'Style is required' }),
-      duration: z.coerce.number()
-        .min(1, { message: 'Duration is required' })
-        .max(maxDuration, { message: `Duration cannot exceed ${maxDuration} minutes for your current plan` }),
-      language: z.string().min(1, { message: 'Language is required' }),
-    });
-  };
 
   const currentPlanLimits = PLAN_LIMITS[userPlan];
   const dynamicFormSchema = createFormSchema(currentPlanLimits.maxDuration);
@@ -201,29 +195,19 @@ const CompanionForm = () => {
         throw new Error(`Duration cannot exceed ${currentPlanLimits.maxDuration} minutes for your ${currentPlanLimits.name}`);
       }
       
-      console.log('🚀 Starting companion creation process...')
-      console.log('📝 Form values:', values)
-      console.log('👤 User plan:', userPlan)
-      console.log('📄 Selected PDF:', selectedPDF ? {
-        name: selectedPDF.name,
-        size: `${(selectedPDF.size / 1024 / 1024).toFixed(2)}MB`,
-        type: selectedPDF.type
-      } : 'None')
 
       // Start the loading simulation
       const loadingPromise = simulateLoadingStages()
       
-      // Start the actual companion creation
+      // Start the actual companion creation - don't pass userPlan
       const creationPromise = createCompanionWithPDF({
         ...values,
-        pdfFile: selectedPDF || undefined,
-        userPlan 
+        pdfFile: selectedPDF || undefined
+        // Remove userPlan from here since it's not needed in the database
       })
 
       // Wait for both to complete
       const [companion] = await Promise.all([creationPromise, loadingPromise])
-
-      console.log('✅ Companion created successfully:', companion)
 
       if (companion) {
         setLoadingStage('Redirecting to your companion...')
@@ -307,7 +291,7 @@ const CompanionForm = () => {
           
           <Progress value={progress} className="mb-2" />
           
-          <p className="text-sm text-blue-700">{loadingStage}</p>
+          <p className="text-sm text-blue-700">{loadingStage} {Math.round(progress)}%</p>
           
           {selectedPDF && progress >= 30 && progress < 70 && (
             <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
@@ -551,7 +535,7 @@ const CompanionForm = () => {
             {loading ? (
               <>
                 <Loader2 className="animate-spin h-4 w-4 mr-2" />
-                {progress < 100 ? 'Processing...' : 'Almost Done!'}
+                {progress < 100 ? `Processing... ${Math.round(progress)}%` : 'Almost Done!'}
               </>
             ) : (
               'Create Your AI Companion'

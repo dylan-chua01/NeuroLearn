@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import CompanionsList from '@/components/CompanionsList';
 import TranscriptsList from '@/components/TranscriptsList';
+import { LoadButton } from '@/components/ui/loadingbutton';
 import { canViewTranscripts, getAllCompanions, getRecentSessions } from '@/lib/actions/companion.actions';
 import Link from 'next/link';
 import React from 'react';
@@ -21,12 +22,13 @@ const Page = async () => {
             <h2 className="text-2xl font-bold text-emerald-800">Create a New Companion</h2>
             <p className="text-emerald-600 mt-1">Build a customized AI tailored to your needs.</p>
           </div>
-          <Link
+          <LoadButton
             href="/companions/new"
-            className="inline-block px-6 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl text-sm font-semibold shadow hover:scale-105 transition-transform"
+            variant="primary"
+            className="hover:scale-105 hover:cursor-pointer"
           >
             Create Now
-          </Link>
+          </LoadButton>
         </section>
 
         {/* Popular Companions Section */}

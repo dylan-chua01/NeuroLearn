@@ -14,9 +14,25 @@ interface SessionWithTranscript {
   companionName: string;
   companionSubject: string;
   createdAt: string;
-  transcript?: any;
+  transcript?: Record<string, unknown>;
   isLoading?: boolean;
   error?: string;
+}
+
+interface UserMetadata {
+  plan?: string;
+  subscription?: {
+    plan?: string;
+  };
+  tier?: string;
+  planType?: string;
+}
+
+interface ClerkUser {
+  id?: string;
+  publicMetadata?: UserMetadata;
+  privateMetadata?: UserMetadata;
+  unsafeMetadata?: UserMetadata;
 }
 
 const PAGE_SIZE = 5;
@@ -27,31 +43,26 @@ const isValidUUID = (str: string): boolean => {
 };
 
 // Helper function to check if user has Pro Learner plan
-const hasProLearnerPlan = (user: any): boolean => {
-
+const hasProLearnerPlan = (user: ClerkUser | null | undefined): boolean => {
   if (user?.id) {
-    console.log('✅ Allowing access for testing - user is authenticated');
     return true;
   }
 
   // Check in public metadata first
   const publicMetadata = user?.publicMetadata;
   if (publicMetadata?.plan === 'pro_learner' || publicMetadata?.subscription?.plan === 'pro_learner') {
-    console.log('✅ Found pro_learner in public metadata');
     return true;
   }
 
   // Check in private metadata (if accessible)
   const privateMetadata = user?.privateMetadata;
   if (privateMetadata?.plan === 'pro_learner' || privateMetadata?.subscription?.plan === 'pro_learner') {
-    console.log('✅ Found pro_learner in private metadata');
     return true;
   }
 
   // Check in unsafe metadata (if accessible)
   const unsafeMetadata = user?.unsafeMetadata;
   if (unsafeMetadata?.plan === 'pro_learner' || unsafeMetadata?.subscription?.plan === 'pro_learner') {
-    console.log('✅ Found pro_learner in unsafe metadata');
     return true;
   }
 
@@ -66,12 +77,9 @@ const hasProLearnerPlan = (user: any): boolean => {
         allMetadata?.subscription?.plan === variation ||
         allMetadata?.tier === variation ||
         allMetadata?.planType === variation) {
-      console.log(`✅ Found plan variation: ${variation}`);
       return true;
     }
   }
-
-  console.log('❌ No pro_learner plan found');
   return false;
 };
 
@@ -148,7 +156,7 @@ const TranscriptsList = () => {
       setLoading(true);
       const sessionsData = await getSessionsWithCallIds();
       setSessions(
-        sessionsData.map((session: any) => ({
+        sessionsData.map((session: SessionWithTranscript) => ({
           ...session,
           isLoading: false,
           error: undefined,
@@ -268,7 +276,7 @@ const TranscriptsList = () => {
       </div>
 
       <div className="grid gap-4">
-        {paginatedSessions.map((session, index) => (
+        {paginatedSessions.map((session) => (
           <div
             key={session.id}
             className={cn(
@@ -337,7 +345,7 @@ const TranscriptsList = () => {
                       e.stopPropagation();
                       handleSessionClick(session.callId);
                     }}
-                    className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200"
+                    className="flex hover:cursor-pointer items-center space-x-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors duration-200"
                     title="View Transcript"
                   >
                     <BookOpen className="w-4 h-4" />
@@ -352,7 +360,7 @@ const TranscriptsList = () => {
                     className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg hover:from-emerald-600 hover:to-teal-600 transition-all duration-200 shadow-sm hover:shadow-md"
                     title="Generate Quiz"
                   >
-                    <HelpCircle className="w-4 h-4" />
+                    <HelpCircle className="w-4 h-4 hover:cursor-pointer" />
                     <span>Quiz</span>
                   </button>
                 </div>
@@ -386,7 +394,7 @@ const TranscriptsList = () => {
                   : "text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
               )}
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-4 h-4 hover:cursor-pointer"  />
               <span>Previous</span>
             </button>
             
@@ -411,14 +419,14 @@ const TranscriptsList = () => {
               onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
               className={cn(
-                "flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200",
+                "flex items-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 hover:cursor-pointer",
                 currentPage === totalPages
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
               )}
             >
               <span>Next</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 hover:cursor-pointer" />
             </button>
           </div>
         </div>
