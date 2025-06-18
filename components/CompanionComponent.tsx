@@ -16,6 +16,13 @@ enum CallStatus {
     FINISHED = 'FINISHED'
 }
 
+// Type for accessing internal vapi properties
+interface VapiInternal {
+    call?: { id?: string };
+    callId?: string;
+    getCallId?: () => string | Promise<string>;
+}
+
 const CompanionComponent = ({
     companionId, subject, topic, name, userName, userImage,
     style, voice, language, pdf_content, pdf_name
@@ -24,7 +31,6 @@ const CompanionComponent = ({
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isMuted, setIsMuted] = useState(false);
     const [messages, setMessages] = useState<SavedMessage[]>([]);
-    const [vapiCallId, setVapiCallId] = useState<string | null>(null);
     const [sessionHistoryId, setSessionHistoryId] = useState<string | null>(null);
 
     const lottieRef = useRef<LottieRefCurrentProps>(null);
@@ -41,24 +47,23 @@ const CompanionComponent = ({
 
             setTimeout(() => {
                 try {
-                    const callId = (vapi as any)?.call?.id || (vapi as any)?.callId;
+                    const vapiInternal = vapi as unknown as VapiInternal;
+                    const callId = vapiInternal?.call?.id || vapiInternal?.callId;
 
                     if (callId) {
-                        setVapiCallId(callId);
                         if (sessionHistoryId) {
                             updateSessionHistory(sessionHistoryId, callId)
                                 .then(() => console.log('Session history updated with call ID:', callId))
                                 .catch(err => console.error("Failed to update session with call ID:", err));
                         }
                     } else {
-                        const altCallId = typeof (vapi as any).getCallId === 'function'
-                            ? (vapi as any).getCallId()
+                        const altCallId = typeof vapiInternal.getCallId === 'function'
+                            ? vapiInternal.getCallId()
                             : null;
 
                         if (altCallId) {
-                            setVapiCallId(altCallId);
                             if (sessionHistoryId) {
-                                updateSessionHistory(sessionHistoryId, altCallId)
+                                updateSessionHistory(sessionHistoryId, altCallId as string)
                                     .then(() => console.log('Session history updated with alt call ID:', altCallId))
                                     .catch(err => console.error("Failed to update session with alt call ID:", err));
                             }
@@ -72,7 +77,8 @@ const CompanionComponent = ({
 
         const onCallEnd = async () => {
             setCallStatus(CallStatus.FINISHED);
-            const callId = (vapi as any)?.call?.id || (vapi as any)?.callId;
+            const vapiInternal = vapi as unknown as VapiInternal;
+            const callId = vapiInternal?.call?.id || vapiInternal?.callId;
             if (callId && sessionHistoryId) {
                 try {
                     await updateSessionHistory(sessionHistoryId, callId);
@@ -80,7 +86,6 @@ const CompanionComponent = ({
                     console.error("❌ Failed to update session with call ID on call end:", err);
                 }
             }
-            setVapiCallId(null);
             setSessionHistoryId(null);
         }
 
@@ -95,7 +100,6 @@ const CompanionComponent = ({
         const onSpeechEnd = () => setIsSpeaking(false);
         const onError = (error: Error) => {
             console.log('Vapi Error:', error);
-            setVapiCallId(null);
             setSessionHistoryId(null);
         };
 
@@ -149,14 +153,17 @@ const CompanionComponent = ({
             let callId: string | undefined;
             if (response?.id) {
                 callId = response.id;
-            } else if ((vapi as any)?.call?.id) {
-                callId = (vapi as any).call.id;
-            } else if (typeof (vapi as any).getCallId === 'function') {
-                callId = await (vapi as any).getCallId();
+            } else {
+                const vapiInternal = vapi as unknown as VapiInternal;
+                if (vapiInternal?.call?.id) {
+                    callId = vapiInternal.call.id;
+                } else if (typeof vapiInternal.getCallId === 'function') {
+                    const result = await vapiInternal.getCallId();
+                    callId = typeof result === 'string' ? result : undefined;
+                }
             }
 
             if (callId) {
-                setVapiCallId(callId);
                 await updateSessionHistory(sessionData.id, callId);
             } else {
                 console.warn('Call ID not found immediately, will try in onCallStart');
