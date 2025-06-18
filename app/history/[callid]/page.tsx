@@ -1,7 +1,7 @@
 import { fetchCallTranscript } from "@/lib/vapi";
 
 interface PageProps {
-  params: { callid: string };
+  params: Promise<{ callid: string }>;
 }
 
 export default async function CallHistoryPage({ params }: PageProps) {
@@ -38,4 +38,4 @@ export default async function CallHistoryPage({ params }: PageProps) {
       </div>
     </main>
   );
-}
+};
