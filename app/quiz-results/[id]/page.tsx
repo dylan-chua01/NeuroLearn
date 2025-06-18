@@ -34,9 +34,9 @@ type QuizResult = {
 export default async function Page({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { id } = params;
+  const { id } = await params;
 
   const user = await currentUser();
 
