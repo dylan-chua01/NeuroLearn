@@ -174,9 +174,19 @@ export const getLearningProgress = async () => {
   const averageScore = results.reduce((sum, r) => sum + r.percentage, 0) / totalQuizzes;
   const totalTimeSpent = results.reduce((sum, r) => sum + (r.time_taken || 0), 0);
 
-  // Group by subject
+  // Group by subject - Fix the type issue
   const subjectBreakdown = results.reduce((acc, result) => {
-    const subject = result.companions?.subject || result.quizzes?.subject || 'General';
+    // Handle the nested relationship data properly
+    const companionSubject = Array.isArray(result.companions) 
+      ? result.companions[0]?.subject 
+      : (result.companions as any)?.subject;
+    
+    const quizSubject = Array.isArray(result.quizzes) 
+      ? result.quizzes[0]?.subject 
+      : (result.quizzes as any)?.subject;
+    
+    const subject = companionSubject || quizSubject || 'General';
+    
     if (!acc[subject]) {
       acc[subject] = { count: 0, totalScore: 0, averageScore: 0 };
     }
@@ -261,8 +271,14 @@ export const generateQuizFromSession = async (sessionId: string) => {
       questions,
       user_id: userId,
       companion_id: session.companion_id,
-      subject: session.companions?.subject || 'general',
-      quiz_title: `Quiz on ${session.companions?.name || 'Session'}`
+      subject: Array.isArray(session.companions) 
+        ? session.companions[0]?.subject || 'general'
+        : (session.companions as any)?.subject || 'general',
+      quiz_title: `Quiz on ${
+        Array.isArray(session.companions) 
+          ? session.companions[0]?.name || 'Session'
+          : (session.companions as any)?.name || 'Session'
+      }`
     })
     .select()
     .single();
@@ -271,7 +287,11 @@ export const generateQuizFromSession = async (sessionId: string) => {
 
   return {
     ...quiz,
-    subject: session.companions?.subject,
-    companionName: session.companions?.name
+    subject: Array.isArray(session.companions) 
+      ? session.companions[0]?.subject
+      : (session.companions as any)?.subject,
+    companionName: Array.isArray(session.companions) 
+      ? session.companions[0]?.name
+      : (session.companions as any)?.name
   };
 };
