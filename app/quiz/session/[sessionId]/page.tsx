@@ -5,9 +5,9 @@ import { notFound } from 'next/navigation';
 
 
 type QuizPageProps = {
-  params: {
+  params: Promise<{
     sessionId: string;
-  };
+  }>;
 };
 
 
