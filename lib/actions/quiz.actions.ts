@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-
 import { createSupabaseClient } from "../supabase";
 import { getCallTranscript } from "./companion.actions";
 import { generateQuestionsFromTranscript } from "../gemini";
@@ -34,6 +33,11 @@ export const generateQuizFromSession = async (sessionId: string) => {
   // Generate questions
   const questions = await generateQuestionsFromTranscript(transcript);
 
+  // ✅ Safely extract companion data (handle array or single object)
+  const companion = Array.isArray(session.companions)
+    ? session.companions[0]
+    : session.companions;
+
   // Store quiz with metadata
   const { data: quiz, error: quizError } = await supabase
     .from('quizzes')
@@ -43,8 +47,8 @@ export const generateQuizFromSession = async (sessionId: string) => {
       questions,
       user_id: userId,
       companion_id: session.companion_id,
-      subject: session.companions?.subject || 'general',
-      quiz_title: `Quiz on ${session.companions?.name || 'Session'}`
+      subject: companion?.subject || 'general',
+      quiz_title: `Quiz on ${companion?.name || 'Session'}`
     })
     .select()
     .single();
@@ -53,7 +57,7 @@ export const generateQuizFromSession = async (sessionId: string) => {
 
   return {
     ...quiz,
-    subject: session.companions?.subject,
-    companionName: session.companions?.name
+    subject: companion?.subject,
+    companionName: companion?.name
   };
 };
