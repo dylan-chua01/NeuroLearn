@@ -74,8 +74,8 @@ async function extractTextBasic(buffer: Buffer): Promise<string> {
   const pdfString = buffer.toString('binary');
   let text = '';
   
-  // Look for text in PDF streams
-  const streamRegex = /stream\s*\n([\s\S]*?)\nendstream/g;
+  // Look for text in PDF streams - using RegExp constructor to avoid 's' flag
+  const streamRegex = new RegExp('stream\\s*\\n([\\s\\S]*?)\\nendstream', 'g');
   let match;
   
   while ((match = streamRegex.exec(pdfString)) !== null) {
@@ -88,13 +88,13 @@ async function extractTextBasic(buffer: Buffer): Promise<string> {
     while ((textMatch = textRegex.exec(streamContent)) !== null) {
       const textContent = textMatch[1];
       if (textContent && textContent.length > 0) {
-        // Decode basic PDF text encoding - FIXED REGEX
+        // Decode basic PDF text encoding
         const decodedText = textContent
           .replace(/\\n/g, '\n')
           .replace(/\\r/g, '\r')
           .replace(/\\t/g, '\t')
-          .replace(/\\\(/g, '(')  // Fixed: escaped the opening parenthesis
-          .replace(/\\\)/g, ')')  // Fixed: escaped the closing parenthesis
+          .replace(/\\\(/g, '(')
+          .replace(/\\\)/g, ')')
           .replace(/\\\\/g, '\\');
         
         text += decodedText + ' ';
@@ -105,9 +105,9 @@ async function extractTextBasic(buffer: Buffer): Promise<string> {
   // If no text found in streams, try alternative patterns
   if (!text || text.trim().length < 10) {
     const textPatterns = [
-      /BT\s+(.*?)\s+ET/gs,
-      /Tj\s*\[(.*?)\]/gs,
-      /TJ\s*\[(.*?)\]/gs
+      new RegExp('BT\\s+(.*?)\\s+ET', 'g'),
+      new RegExp('Tj\\s*\\[(.*?)\\]', 'g'),
+      new RegExp('TJ\\s*\\[(.*?)\\]', 'g')
     ];
     
     for (const pattern of textPatterns) {
