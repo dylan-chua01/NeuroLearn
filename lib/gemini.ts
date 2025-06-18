@@ -45,9 +45,11 @@ TRANSCRIPT:
 ${transcript}
 `;
 
+  let response; // Declare response outside try block to access in catch
+
   try {
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    response = await result.response;
     const text = response.text();
 
     // Robust JSON cleaning and validation
@@ -68,7 +70,7 @@ ${transcript}
       throw new Error('Expected array of questions');
     }
 
-    questions.forEach((q, i) => {
+    questions.forEach((q: any, i: number) => {
       if (!q.question || !q.options || q.correctAnswer === undefined) {
         throw new Error(`Invalid question structure at index ${i}`);
       }
@@ -80,10 +82,10 @@ ${transcript}
     return questions;
   } catch (error) {
     console.error("Gemini Error Details:", {
-      error,
+      error: error instanceof Error ? error.message : 'Unknown error',
       prompt,
-      response: response?.text()
+      responseText: response?.text()
     });
-    throw new Error(`Quiz generation failed: ${error.message}`);
+    throw new Error(`Quiz generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
