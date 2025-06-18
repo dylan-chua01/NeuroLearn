@@ -335,9 +335,10 @@ const extractTextFromPDF = async (fileBuffer: ArrayBuffer): Promise<string> => {
     const pdf = (await import('pdf-parse')).default;
     const data = await pdf(Buffer.from(fileBuffer));
     return data.text.trim();
-  } catch (error: any) {
+  } catch (error) {
     console.error('PDF extraction failed:', error);
-    throw new Error(`Failed to extract text from PDF: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to extract text from PDF: ${errorMessage}`);
   }
 };
 
@@ -370,11 +371,8 @@ export const uploadPDF = async (file: File, companionId?: string) => {
   }
   
   try {
-    const startTime = Date.now();
-    
     // Convert File to ArrayBuffer for server-side processing
     const fileBuffer = await file.arrayBuffer();
-    const extractionStartTime = Date.now();
     
     // Extract text using PDF.js
     const extractedText = await extractTextFromPDF(fileBuffer);
@@ -390,8 +388,6 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     const timestamp = Date.now();
     const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filename = `${userId}/${timestamp}-${sanitizedName}`;
-
-    const uploadStartTime = Date.now();
     
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabaseServiceRole.storage
@@ -424,8 +420,6 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     
     // Update companion if ID provided
     if (companionId) {
-      const dbUpdateStartTime = Date.now();
-      
       const { error: updateError } = await supabaseClient
         .from('companions')
         .update({
@@ -508,6 +502,16 @@ export const removePDF = async (companionId: string) => {
   return true;
 };
 
+// Type definition for the extended companion data
+interface CompanionDataWithPDF extends Omit<CreateCompanion, 'pdf_url' | 'pdf_name' | 'pdf_content' | 'has_pdf'> {
+  author: string;
+  pdf_url: string | null;
+  pdf_name: string | null;
+  pdf_content: string | null;
+  has_pdf: boolean;
+  created_at: string;
+}
+
 export const createCompanionWithPDF = async (
   formData: CreateCompanion & { pdfFile?: File }
 ) => {
@@ -516,23 +520,16 @@ export const createCompanionWithPDF = async (
   
   const supabaseClient = createSupabaseClient();
   
-  const overallStartTime = Date.now();
-  
   try {
     let pdfData = null;
     
     // Handle PDF upload if provided
     if (formData.pdfFile) {
-      const pdfStartTime = Date.now();
-      
       pdfData = await uploadPDF(formData.pdfFile);
-      
-    } else {
-
     }
     
     // Create companion with PDF data
-    const companionData = {
+    const companionData: CompanionDataWithPDF = {
       ...formData,
       author,
       pdf_url: pdfData?.url || null,
@@ -543,15 +540,11 @@ export const createCompanionWithPDF = async (
     };
     
     // Remove fields that don't exist in the database schema
-    delete (companionData as any).pdfFile;
-    delete (companionData as any).userPlan; // Remove userPlan field
-    
-    
-    const dbInsertStartTime = Date.now();
+    const { pdfFile, ...dataToInsert } = companionData as CompanionDataWithPDF & { pdfFile?: File };
     
     const { data, error } = await supabaseClient
       .from("companions")
-      .insert([companionData])
+      .insert([dataToInsert])
       .select();
 
     if (error) {
@@ -559,7 +552,6 @@ export const createCompanionWithPDF = async (
       
       // Clean up uploaded file if companion creation fails
       if (pdfData?.path) {
-        
         const supabaseServiceRole = createServiceRoleClient();
         await supabaseServiceRole.storage
           .from('companion-pdfs')
@@ -577,8 +569,7 @@ export const createCompanionWithPDF = async (
     return data[0];
     
   } catch (error) {
-    const totalTime = Date.now() - overallStartTime;
-    console.error(`❌ Create companion with PDF failed after ${totalTime}ms:`, error);
+    console.error('❌ Create companion with PDF failed:', error);
     console.error('🔍 Full error details:', {
       message: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
