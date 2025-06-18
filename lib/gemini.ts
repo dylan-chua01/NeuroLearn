@@ -1,8 +1,17 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctAnswer: number;
+  explanation?: string;
+  concept?: string;
+  difficulty?: 'easy' | 'medium' | 'hard';
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY!);
 
-export const generateQuestionsFromTranscript = async (transcript: string) => {
+export const generateQuestionsFromTranscript = async (transcript: string): Promise<QuizQuestion[]> => {
   const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `
@@ -45,32 +54,29 @@ TRANSCRIPT:
 ${transcript}
 `;
 
-  let response; // Declare response outside try block to access in catch
+  let response;
 
   try {
     const result = await model.generateContent(prompt);
     response = await result.response;
     const text = response.text();
 
-    // Robust JSON cleaning and validation
     const cleanJsonString = text
-      .replace(/```json|```/g, '') // Remove markdown code blocks
-      .replace(/[\r\n]+/g, '')     // Remove extra newlines
+      .replace(/```json|```/g, '')
+      .replace(/[\r\n]+/g, '')
       .trim();
 
-    // Validate JSON structure before parsing
     if (!cleanJsonString.startsWith('[') || !cleanJsonString.endsWith(']')) {
       throw new Error('Invalid JSON format - expected array');
     }
 
-    const questions = JSON.parse(cleanJsonString);
+    const questions: QuizQuestion[] = JSON.parse(cleanJsonString);
 
-    // Validate questions structure
     if (!Array.isArray(questions)) {
       throw new Error('Expected array of questions');
     }
 
-    questions.forEach((q: any, i: number) => {
+    questions.forEach((q: QuizQuestion, i: number) => {
       if (!q.question || !q.options || q.correctAnswer === undefined) {
         throw new Error(`Invalid question structure at index ${i}`);
       }
