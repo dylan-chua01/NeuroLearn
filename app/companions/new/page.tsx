@@ -7,12 +7,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 const NewCompanion = async () => {
-  const { userId, has } = await auth();
+  const userId = await auth();
   if (!userId) redirect('/sign-in');
 
   
 
-  const [canCreateCompanion, canCreateActiveCompanion] = await Promise.all([
+  const canCreateCompanion = await Promise.all([
     newCompanionPermissions(),
     newActiveCompanionPermissions()
   ]);

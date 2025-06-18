@@ -374,12 +374,10 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     
     // Convert File to ArrayBuffer for server-side processing
     const fileBuffer = await file.arrayBuffer();
-    const conversionTime = Date.now() - startTime;
     const extractionStartTime = Date.now();
     
     // Extract text using PDF.js
     const extractedText = await extractTextFromPDF(fileBuffer);
-    const extractionTime = Date.now() - extractionStartTime;
     
     // Validate and potentially truncate extracted content
     let finalText = extractedText;
@@ -409,8 +407,6 @@ export const uploadPDF = async (file: File, companionId?: string) => {
       throw new Error(`Storage upload failed: ${uploadError.message}`);
     }
     
-    const uploadTime = Date.now() - uploadStartTime;
-    
     // Get public URL
     const { data: urlData } = supabaseServiceRole.storage
       .from('companion-pdfs')
@@ -430,7 +426,7 @@ export const uploadPDF = async (file: File, companionId?: string) => {
     if (companionId) {
       const dbUpdateStartTime = Date.now();
       
-      const { data: updateData, error: updateError } = await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from('companions')
         .update({
           pdf_url: result.url,
@@ -451,11 +447,7 @@ export const uploadPDF = async (file: File, companionId?: string) => {
           .remove([uploadData.path]);
         throw new Error(`Database update failed: ${updateError.message}`);
       }
-      
-      const dbUpdateTime = Date.now() - dbUpdateStartTime;
     }
-    
-    const totalTime = Date.now() - startTime;
     
     return result;
     
@@ -535,7 +527,6 @@ export const createCompanionWithPDF = async (
       
       pdfData = await uploadPDF(formData.pdfFile);
       
-      const pdfProcessingTime = Date.now() - pdfStartTime;
     } else {
 
     }
@@ -582,9 +573,6 @@ export const createCompanionWithPDF = async (
       console.error('❌ No data returned from companion creation');
       throw new Error('Failed to create companion: No data returned');
     }
-
-    const dbInsertTime = Date.now() - dbInsertStartTime;
-    const totalTime = Date.now() - overallStartTime;
     
     return data[0];
     

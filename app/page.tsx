@@ -3,7 +3,6 @@ import CompanionsList from '@/components/CompanionsList';
 import TranscriptsList from '@/components/TranscriptsList';
 import { LoadButton } from '@/components/ui/loadingbutton';
 import { canViewTranscripts, getAllCompanions, getRecentSessions } from '@/lib/actions/companion.actions';
-import Link from 'next/link';
 import React from 'react';
 
 
