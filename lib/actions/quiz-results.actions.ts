@@ -21,6 +21,34 @@ export interface QuizSubmission {
   completedAt: Date;
 }
 
+// Define types for Supabase relationship data
+interface CompanionData {
+  subject?: string;
+  name?: string;
+}
+
+interface QuizData {
+  subject?: string;
+  quiz_title?: string;
+  questions?: unknown;
+}
+
+interface QuizResultWithRelations {
+  score: number;
+  total_questions: number;
+  percentage: number;
+  time_taken: number;
+  completed_at: string;
+  companions: CompanionData | CompanionData[] | null;
+  quizzes: QuizData | QuizData[] | null;
+}
+
+interface SessionWithCompanions {
+  call_id: string;
+  companion_id: string;
+  companions: CompanionData | CompanionData[] | null;
+}
+
 export const submitQuizResults = async (submission: QuizSubmission) => {
     try {
       // 1. Authentication
@@ -169,21 +197,24 @@ export const getLearningProgress = async () => {
     };
   }
 
+  // Type the results properly
+  const typedResults = results as QuizResultWithRelations[];
+
   // Calculate statistics
-  const totalQuizzes = results.length;
-  const averageScore = results.reduce((sum, r) => sum + r.percentage, 0) / totalQuizzes;
-  const totalTimeSpent = results.reduce((sum, r) => sum + (r.time_taken || 0), 0);
+  const totalQuizzes = typedResults.length;
+  const averageScore = typedResults.reduce((sum, r) => sum + r.percentage, 0) / totalQuizzes;
+  const totalTimeSpent = typedResults.reduce((sum, r) => sum + (r.time_taken || 0), 0);
 
   // Group by subject - Fix the type issue
-  const subjectBreakdown = results.reduce((acc, result) => {
+  const subjectBreakdown = typedResults.reduce((acc, result) => {
     // Handle the nested relationship data properly
     const companionSubject = Array.isArray(result.companions) 
       ? result.companions[0]?.subject 
-      : (result.companions as any)?.subject;
+      : result.companions?.subject;
     
     const quizSubject = Array.isArray(result.quizzes) 
       ? result.quizzes[0]?.subject 
-      : (result.quizzes as any)?.subject;
+      : result.quizzes?.subject;
     
     const subject = companionSubject || quizSubject || 'General';
     
@@ -198,16 +229,16 @@ export const getLearningProgress = async () => {
 
   // Recent activity (last 7 days)
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const recentResults = results.filter(r => 
+  const recentResults = typedResults.filter(r => 
     new Date(r.completed_at) > sevenDaysAgo
   );
 
   // Calculate progress trend
   let progressTrend: 'improving' | 'declining' | 'stable' = 'stable';
-  if (results.length >= 4) {
-    const midpoint = Math.floor(results.length / 2);
-    const firstHalf = results.slice(0, midpoint);
-    const secondHalf = results.slice(midpoint);
+  if (typedResults.length >= 4) {
+    const midpoint = Math.floor(typedResults.length / 2);
+    const firstHalf = typedResults.slice(0, midpoint);
+    const secondHalf = typedResults.slice(midpoint);
     
     const firstHalfAvg = firstHalf.reduce((sum, r) => sum + r.percentage, 0) / firstHalf.length;
     const secondHalfAvg = secondHalf.reduce((sum, r) => sum + r.percentage, 0) / secondHalf.length;
@@ -254,31 +285,33 @@ export const generateQuizFromSession = async (sessionId: string) => {
     throw new Error(sessionError?.message || 'Session not found');
   }
 
+  // Type the session data properly
+  const typedSession = session as SessionWithCompanions;
+
   // Get transcript
-  const { data: transcriptData } = await getCallTranscript(session.call_id);
+  const { data: transcriptData } = await getCallTranscript(typedSession.call_id);
   const transcript = transcriptData?.transcript;
   if (!transcript) throw new Error('No transcript available');
 
   // Generate questions
   const questions = await generateQuestionsFromTranscript(transcript);
 
+  // Extract companion data safely
+  const companionData = Array.isArray(typedSession.companions) 
+    ? typedSession.companions[0]
+    : typedSession.companions;
+
   // Store quiz with metadata
   const { data: quiz, error: quizError } = await supabase
     .from('quizzes')
     .insert({
       session_id: sessionId,
-      call_id: session.call_id,
+      call_id: typedSession.call_id,
       questions,
       user_id: userId,
-      companion_id: session.companion_id,
-      subject: Array.isArray(session.companions) 
-        ? session.companions[0]?.subject || 'general'
-        : (session.companions as any)?.subject || 'general',
-      quiz_title: `Quiz on ${
-        Array.isArray(session.companions) 
-          ? session.companions[0]?.name || 'Session'
-          : (session.companions as any)?.name || 'Session'
-      }`
+      companion_id: typedSession.companion_id,
+      subject: companionData?.subject || 'general',
+      quiz_title: `Quiz on ${companionData?.name || 'Session'}`
     })
     .select()
     .single();
@@ -287,11 +320,7 @@ export const generateQuizFromSession = async (sessionId: string) => {
 
   return {
     ...quiz,
-    subject: Array.isArray(session.companions) 
-      ? session.companions[0]?.subject
-      : (session.companions as any)?.subject,
-    companionName: Array.isArray(session.companions) 
-      ? session.companions[0]?.name
-      : (session.companions as any)?.name
+    subject: companionData?.subject,
+    companionName: companionData?.name
   };
 };
