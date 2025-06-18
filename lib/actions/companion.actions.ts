@@ -481,7 +481,11 @@ export const createCompanionWithPDF = async (
     };
     
     // Remove properties that shouldn't be stored in the database
-    const { pdfFile: _pdfFile, userPlan: _userPlan, ...cleanCompanionData } = companionData;
+    const { pdfFile, userPlan, ...cleanCompanionData } = companionData;
+    
+    // Suppress unused variable warnings by referencing them
+    void pdfFile;
+    void userPlan;
     
     const { data, error } = await supabaseClient
       .from("companions")
