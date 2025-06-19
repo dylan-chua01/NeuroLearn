@@ -36,10 +36,14 @@ const CompanionComponent = ({
     const lottieRef = useRef<LottieRefCurrentProps>(null);
 
     useEffect(() => {
-        if (lottieRef) {
-            isSpeaking ? lottieRef.current?.play() : lottieRef.current?.stop();
-        }
-    }, [isSpeaking, lottieRef]);
+      if (lottieRef.current) {
+          if (isSpeaking) {
+              lottieRef.current.play();
+          } else {
+              lottieRef.current.stop();
+          }
+      }
+  }, [isSpeaking, lottieRef]);
 
     useEffect(() => {
         const onCallStart = () => {

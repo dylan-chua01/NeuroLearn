@@ -106,7 +106,7 @@ export const configureAssistant = (
   console.log("🔧 Configuring Assistant:", { voice, style, language, topic, subject, hasPdf: !!pdfContent, pdfName });
 
   const voiceId = getVoiceId(language, voice, style);
-  // @ts-expect-error
+  // @ts-expect-error this will still work
   if (language !== "en" && Object.values(voices.en[voice]).includes(voiceId)) {
     console.warn("⚠️ Non-English language selected, but default English voice is used!");
   }
@@ -117,7 +117,7 @@ export const configureAssistant = (
   
   let firstMessage = langConfig.firstMessage;
   if (topic) {
-    // @ts-expect-error
+    // @ts-expect-error this will still work
     firstMessage = firstMessage.replace("{{topic}}", topic);
   }
 
@@ -189,11 +189,11 @@ LANGUAGE ENFORCEMENT: Remember, you MUST follow the language instruction above. 
     numWordsToInterruptAssistant: 2,
     
     // Add clientMessages configuration
-    // @ts-expect-error
+    // @ts-expect-error this will still work
     clientMessages: ["transcript", "hang", "function-call"],
     
     // Add serverMessages configuration (empty for web calls typically)
-    // @ts-expect-error
+    // @ts-expect-error this will still work
     serverMessages: [],
   };
 
